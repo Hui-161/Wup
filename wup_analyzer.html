@@ -1,0 +1,4474 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WUP Analyzer — Phase 1</title>
+<style>
+  /* ======================================================
+     LOKAL-ONLY: keine externen Fonts, keine externen Scripts.
+     Alle Ressourcen inline. IT-konform.
+     ====================================================== */
+
+  :root {
+    --bg: #0e1116;
+    --bg-elevated: #161b22;
+    --bg-input: #0a0d12;
+    --border: #2d333b;
+    --border-strong: #444c56;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-dim: #6e7681;
+    --accent: #ff7a00;        /* Industrieller Orange-Akzent */
+    --accent-hover: #ff9433;
+    --good: #3fb950;
+    --warn: #d29922;
+    --bad: #f85149;
+    --info: #58a6ff;
+
+    --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; }
+
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 0% 0%, rgba(255, 122, 0, 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 100% 100%, rgba(88, 166, 255, 0.04) 0%, transparent 60%);
+  }
+
+  /* ===== Header ===== */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    background: rgba(14, 17, 22, 0.85);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1::before {
+    content: "";
+    display: inline-block;
+    width: 10px; height: 10px;
+    background: var(--accent);
+    transform: rotate(45deg);
+  }
+  header .sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* ===== Main Layout ===== */
+  main { max-width: 1600px; margin: 0 auto; padding: 24px 28px 80px; }
+
+  .panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-body { padding: 18px; }
+
+  /* ===== Drop Zone ===== */
+  .drop-zone {
+    position: relative;
+    border: 2px dashed var(--border-strong);
+    border-radius: 6px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    background: var(--bg-input);
+    user-select: none;
+  }
+  .drop-zone:hover {
+    border-color: var(--accent);
+    background: rgba(255, 122, 0, 0.04);
+  }
+  .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(255, 122, 0, 0.10);
+    border-style: solid;
+  }
+  .drop-zone.dragover .icon { color: var(--accent); }
+  /* WICHTIG: Kinder-Elemente keine eigenen Pointer-Events, sonst feuert dragleave falsch */
+  .drop-zone * { pointer-events: none; }
+  .drop-zone .icon {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    transition: color 0.15s ease;
+  }
+  .drop-zone .label { font-size: 14px; color: var(--text); margin-bottom: 4px; }
+  .drop-zone .hint { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
+  .drop-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    /* überschreibe das pointer-events:none oben für den Input */
+    pointer-events: auto !important;
+  }
+  .drop-zone.dragover input[type=file] { pointer-events: none !important; }
+
+  /* ===== Settings ===== */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .setting label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .setting input[type=number], .setting select {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .setting input[type=number]:focus, .setting select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* ===== File List & Results ===== */
+  .file-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 14px;
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+  .file-card-header {
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .file-card-header:hover { background: rgba(255, 255, 255, 0.04); }
+  .file-card-header h3 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .file-card-header .meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .file-card-header .header-main { flex: 1 1 auto; min-width: 0; }
+  .file-card-header .header-values {
+    display: flex; gap: 14px; align-items: baseline;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .file-card-header .header-values .v-brutto { color: var(--text-muted); }
+  .file-card-header .header-values .v-netto { color: var(--accent); font-weight: 700; font-size: 14px; }
+  .file-card-header .header-values .v-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+    margin-right: 3px;
+  }
+  .file-card-header .toggle::before {
+    content: "▾";
+    color: var(--text-muted);
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+  .file-card.collapsed .toggle::before { transform: rotate(-90deg); }
+  .file-card.collapsed .file-card-body { display: none; }
+
+  .file-card-body { padding: 18px; }
+
+  /* X-Button zum Entfernen */
+  .file-card-header .delete-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1;
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.12s;
+  }
+  .file-card-header .delete-btn:hover {
+    background: rgba(212,83,126,0.15);
+    border-color: #d4537e;
+    color: #f8a4be;
+  }
+
+  /* Multiwand-Badge im Header */
+  .multiwall-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-left: 6px;
+    background: rgba(63, 185, 80, 0.15);
+    border: 1px solid rgba(63, 185, 80, 0.4);
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #88d399;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  /* ZNR-Badge — original Zeichnungsnummer */
+  .znr-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-left: 6px;
+    background: rgba(88, 166, 255, 0.10);
+    border: 1px solid rgba(88, 166, 255, 0.35);
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #a8c8f0;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+  }
+
+  /* JSON-Import-Bereich */
+  .json-import-row {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .json-import-status {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+  .json-import-status.success { color: #88d399; }
+  .json-import-status.error { color: #f8a4be; }
+
+  .pending-import-panel {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: rgba(88, 166, 255, 0.05);
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .pending-import-panel .header {
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .pending-import-panel .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+  }
+  .pending-import-panel .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pending-import-panel .file-row.matched .status-dot { background: #88d399; }
+  .pending-import-panel .file-row.matched { color: var(--text); }
+  .pending-import-panel .file-row.pending .status-dot {
+    background: transparent;
+    border: 1px solid var(--text-dim);
+  }
+  .pending-import-panel .reset-btn {
+    margin-top: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .pending-import-panel .reset-btn:hover {
+    background: rgba(212,83,126,0.10);
+    border-color: #d4537e;
+    color: #f8a4be;
+  }
+  .help-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .help-btn:hover {
+    background: rgba(88, 166, 255, 0.10);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .help-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  /* Methoden-Hilfe-Box */
+  .method-help-box {
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: rgba(88, 166, 255, 0.04);
+    border: 1px solid rgba(88, 166, 255, 0.20);
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .method-help-row {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .method-help-row:last-child { margin-bottom: 0; }
+  .method-help-letter {
+    width: 30px; height: 30px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid;
+  }
+  .method-help-letter.a { background: rgba(160, 160, 160, 0.10); border-color: rgba(160, 160, 160, 0.4); color: #c9c9c9; }
+  .method-help-letter.b { background: rgba(63, 185, 80, 0.12); border-color: rgba(63, 185, 80, 0.45); color: #88d399; }
+  .method-help-letter.c { background: rgba(88, 166, 255, 0.10); border-color: rgba(88, 166, 255, 0.35); color: #a8c8f0; }
+  .method-help-text {
+    color: var(--text-muted);
+  }
+  .method-help-text b {
+    color: var(--text);
+  }
+  .method-help-text i {
+    color: var(--text-dim);
+    font-style: italic;
+    display: inline-block;
+    margin-top: 2px;
+  }
+
+  /* Liste der gelöschten Wände */
+  .deleted-walls-panel {
+    margin: 16px 0;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.18);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .deleted-walls-panel .header {
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+  }
+  .deleted-walls-panel .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    margin: 4px 6px 4px 0;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--font-mono);
+  }
+  .deleted-walls-panel .item .restore-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .deleted-walls-panel .item .restore-btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* ===== Multiwand: äußere Datei-Card mit Summen, innere Wand-Cards ===== */
+  .file-card.multiwall .file-card-header {
+    background: linear-gradient(180deg, rgba(63, 185, 80, 0.06), rgba(63, 185, 80, 0.02));
+    border-bottom-color: rgba(63, 185, 80, 0.18);
+  }
+  .file-card.multiwall .file-card-header h3 {
+    color: #88d399;
+  }
+  .multi-summary {
+    background: rgba(63, 185, 80, 0.04);
+    border: 1px solid rgba(63, 185, 80, 0.18);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .multi-summary .method-card {
+    background: var(--bg-elevated);
+  }
+  .walls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .wall-card {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 5px;
+    background: var(--bg-card, rgba(0,0,0,0.12));
+    overflow: hidden;
+  }
+  .wall-card-header {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.025);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .wall-card-header:hover { background: rgba(255, 255, 255, 0.045); }
+  .wall-card-header h4 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .wall-card-header .meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .wall-card-header .toggle::before {
+    content: "▾";
+    color: var(--text-muted);
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+  .wall-card.collapsed .toggle::before { transform: rotate(-90deg); }
+  .wall-card.collapsed .wall-card-body { display: none; }
+  .wall-card-body { padding: 14px; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .stat {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .stat .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+  }
+  .stat .value {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 2px;
+  }
+  .stat.accent .value { color: var(--accent); }
+  .stat.good .value { color: var(--good); }
+  .stat.bad .value { color: var(--bad); }
+
+  /* ===== Holes Table ===== */
+  table.holes {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  table.holes th, table.holes td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  table.holes th {
+    background: var(--bg-input);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  table.holes tr:hover td { background: rgba(255, 255, 255, 0.02); }
+  table.holes .num { text-align: right; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .badge.tuer { background: rgba(248, 81, 73, 0.18); color: var(--bad); }
+  .badge.fenster { background: rgba(210, 153, 34, 0.18); color: var(--warn); }
+  .badge.klein { background: rgba(139, 148, 158, 0.18); color: var(--text-muted); }
+
+  /* Toggle button for hole abzug */
+  .abzug-toggle {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .abzug-toggle.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .abzug-toggle:hover { border-color: var(--accent); }
+
+  /* ===== SVG Visualization ===== */
+  .svg-wrap {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-input);
+    overflow: hidden;
+    margin-top: 16px;
+    position: relative;  /* für Tooltip-Anker */
+  }
+  .svg-wrap svg { display: block; width: 100%; height: auto; }
+
+  /* Anklickbare SVG-Elemente */
+  .viz-hole, .viz-indent {
+    cursor: pointer;
+    transition: filter 0.12s, stroke-width 0.12s;
+  }
+  .viz-hole:hover, .viz-indent:hover {
+    filter: brightness(1.4) drop-shadow(0 0 4px currentColor);
+    stroke-width: 8;
+  }
+
+  /* Tooltip — schwebt über der Visualisierung beim Hover */
+  .viz-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(15, 17, 22, 0.96);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.5;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    transition: opacity 0.08s;
+    max-width: 280px;
+  }
+  .viz-tooltip .tt-title {
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .viz-tooltip .tt-row {
+    display: flex; gap: 8px;
+    color: var(--text-muted);
+  }
+  .viz-tooltip .tt-row .tt-key {
+    color: var(--text-dim);
+    min-width: 56px;
+  }
+  .viz-tooltip .tt-row .tt-val {
+    color: var(--text);
+  }
+  .viz-tooltip .tt-status {
+    margin-top: 5px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+  }
+  .viz-tooltip .tt-status.abzug { color: #f8a4be; font-weight: 700; }
+  .viz-tooltip .tt-status.kein-abzug { color: #88d399; font-weight: 700; }
+  .viz-tooltip .tt-status.filled { color: #88d399; font-weight: 700; }
+  .viz-tooltip .tt-status.unfilled { color: #f8a4be; font-weight: 700; }
+  .viz-tooltip .tt-hint {
+    margin-top: 4px;
+    color: var(--accent);
+    font-size: 10px;
+    opacity: 0.75;
+  }
+
+  /* Highlight für Tabellen-Zeilen nach Klick aus Visualisierung */
+  @keyframes row-pulse {
+    0%   { background: rgba(88, 166, 255, 0.45); }
+    50%  { background: rgba(88, 166, 255, 0.20); }
+    100% { background: transparent; }
+  }
+  tr.row-highlight {
+    animation: row-pulse 1.6s ease-out;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 2px; }
+
+  /* ===== Footer / Total ===== */
+  .total-panel {
+    background: linear-gradient(180deg, var(--bg-elevated), rgba(255, 122, 0, 0.05));
+    border: 1px solid var(--accent);
+  }
+  .total-panel .panel-header {
+    color: var(--accent);
+    border-bottom-color: rgba(255, 122, 0, 0.3);
+  }
+  .total-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .total-grid .stat .value { font-size: 22px; }
+
+  /* ===== Buttons ===== */
+  button.action {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--font-sans);
+  }
+  button.action:hover { background: var(--accent-hover); }
+  button.action.secondary {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+  }
+  button.action.secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .button-row { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+
+  /* ===== Status & Errors ===== */
+  .status-bar {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 8px 18px;
+    background: var(--bg-input);
+    border-top: 1px solid var(--border);
+  }
+  .error { color: var(--bad); }
+  .warning { color: var(--warn); }
+  .success { color: var(--good); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  /* ===== Tabs in file-card ===== */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin: -18px -18px 16px;
+    background: rgba(0,0,0,0.2);
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ===== Split-Pane (Tabs links, Visualisierung rechts) ===== */
+  /* Container-Query damit jede Card ihr Layout selbst entscheidet, abhängig von ihrer Breite */
+  .file-card-body { container-type: inline-size; container-name: wallbody; padding: 0; }
+  .wall-split {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    min-height: 0;
+  }
+  .wall-pane-left {
+    flex: 1 1 60%;
+    min-width: 0;
+    padding: 18px;
+    overflow: hidden;
+  }
+  .wall-pane-left .tabs {
+    margin: -18px -18px 16px;
+  }
+  .wall-pane-right {
+    flex: 1 1 40%;
+    min-width: 0;
+    padding: 18px 18px 18px 0;
+    overflow: hidden;
+    display: none;  /* default ausgeblendet, aktiviert per Container-Query */
+  }
+  .wall-pane-resizer {
+    width: 6px;
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: transparent;
+    border-left: 1px solid var(--border);
+    margin: 18px 0;
+    transition: border-color 0.12s;
+    display: none;  /* default ausgeblendet */
+  }
+  .wall-pane-resizer:hover {
+    border-left-color: var(--accent);
+  }
+  .wall-pane-resizer.dragging {
+    border-left-color: var(--accent);
+    border-left-width: 2px;
+  }
+  .viz-pane-inner {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 100px);
+    overflow: auto;
+  }
+  .tab-visual-only { display: block; }  /* default sichtbar (= schmaler Modus) */
+
+  /* Container-Query: ab ~700px Card-Body-Breite zwei Spalten */
+  @container wallbody (min-width: 700px) {
+    .wall-pane-right { display: block; }
+    .wall-pane-resizer { display: block; }
+    /* Visualisierungs-Tab in der Tabs-Leiste ausblenden — Visualisierung ist immer rechts sichtbar */
+    .tab-visual-only { display: none; }
+    /* Falls der User vorher den Visualisierungs-Tab aktiv hatte, wird der entsprechende Inhalt
+       links versteckt — aber dann zeigen wir stattdessen den Übersichts-Tab als Fallback an.
+       Wir nutzen :has() um den ganzen wall-pane-left zu erkennen wenn der visual-Content active ist
+       und schalten dann den summary-Content auf sichtbar.
+       Hinweis: Wenn :has nicht unterstützt wird, sieht man kurz nichts bis JS reagiert. */
+    .wall-pane-left:has(.tab-content[id^="visual-"].active) > .tab-content[id^="summary-"] {
+      display: block;
+    }
+    .wall-pane-left:has(.tab-content[id^="visual-"].active) > .tab-content[id^="visual-"] {
+      display: none;
+    }
+    /* Standardfall: visual-Tab-Content ist nicht active und wird einfach nicht angezeigt */
+    .wall-pane-left > .tab-content[id^="visual-"] {
+      display: none;
+    }
+  }
+  /* Fallback für Browser ohne Container-Queries: ab ~900px Viewport */
+  @supports not (container-type: inline-size) {
+    @media (min-width: 900px) {
+      .wall-pane-right { display: block; }
+      .wall-pane-resizer { display: block; }
+      .tab-visual-only { display: none; }
+      .wall-pane-left > .tab-content[id^="visual-"] { display: none; }
+      .wall-pane-left:has(.tab-content[id^="visual-"].active) > .tab-content[id^="summary-"] {
+        display: block;
+      }
+    }
+  }
+
+  /* ===== Method Cards (3 parallele Berechnungsmethoden) ===== */
+  .method-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .method-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .method-card.recommended {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(255, 122, 0, 0.06), var(--bg-input) 50%);
+  }
+  .method-card.recommended::before {
+    content: "EMPFOHLEN";
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    background: var(--accent);
+    color: #000;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+  .method-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .method-formula {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .method-brutto {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .method-card.recommended .method-brutto { color: var(--accent); }
+  .method-row {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 6px;
+  }
+  .method-net {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--good);
+    text-align: right;
+  }
+  .method-net::before {
+    content: "= ";
+    color: var(--text-dim);
+  }
+
+  .info-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .info-key {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+  }
+  .info-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  /* ===== Warnungs-Banner inline in Übersicht ===== */
+  .warnings-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .warning-banner .warning-icon {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+  }
+  .warning-banner.error {
+    background: rgba(212, 83, 126, 0.10);
+    border-color: rgba(212, 83, 126, 0.45);
+    color: #f8a4be;
+  }
+  .warning-banner.error .warning-icon { color: #f8a4be; }
+  .warning-banner.warning {
+    background: rgba(247, 178, 89, 0.08);
+    border-color: rgba(247, 178, 89, 0.4);
+    color: #f7c478;
+  }
+  .warning-banner.warning .warning-icon { color: #f7c478; }
+  .warning-banner.info {
+    background: rgba(88, 166, 255, 0.07);
+    border-color: rgba(88, 166, 255, 0.30);
+    color: #a8c8f0;
+  }
+  .warning-banner.info .warning-icon { color: #a8c8f0; }
+
+  /* Wand-Card mit Fehlern: roter Akzent-Strich links */
+  .wall-card.has-errors { border-left-color: #d4537e; }
+  .wall-card.has-warnings { border-left-color: #f7b259; }
+  /* Auch für Einzelwand-File-Cards */
+  .file-card.has-errors { border-left: 3px solid #d4537e; }
+  .file-card.has-warnings { border-left: 3px solid #f7b259; }
+
+  /* ===== Kompakte Listen-Übersicht (Methoden-Detail nur in der gewählten Methode) ===== */
+  .summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.18);
+  }
+  .summary-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    padding: 9px 14px;
+    font-size: 12px;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.35;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row.header {
+    background: rgba(255,255,255,0.025);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+    padding: 8px 14px;
+  }
+  .summary-row .key {
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+  }
+  .summary-row .val {
+    font-family: var(--font-mono);
+    color: var(--text);
+    text-align: right;
+  }
+  .summary-row .val.brutto { color: var(--text-muted); }
+  .summary-row .val.abzug { color: #f8a4be; }
+  .summary-row .val.netto {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .summary-row.method-row .val.netto { font-size: 16px; }
+
+  /* ===== Sticky Footer ===== */
+  body { padding-bottom: 56px; }
+  .sticky-footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, rgba(13,17,23,0.92), rgba(13,17,23,0.98));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border-strong);
+    padding: 10px 24px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    font-size: 13px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+  }
+  .sticky-footer .sf-method {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-dim);
+  }
+  .sticky-footer .sf-value {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .sticky-footer .sf-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border-strong);
+  }
+  .sticky-footer .sf-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .tech-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+    margin: 24px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WUP Analyzer</h1>
+  <div class="sub">Phase 1 · Außenkontur &amp; Öffnungs-Erkennung · Lokal · v0.1</div>
+</header>
+
+<main>
+
+  <!-- Drop Zone -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Dateien einlesen</span>
+      <span class="sub" style="font-size: 10px; color: var(--text-dim); text-transform: none; letter-spacing: 0;" id="parserStatus">bereit</span>
+    </div>
+    <div class="panel-body">
+      <div class="drop-zone" id="dropZone">
+        <div class="icon">[ + ]</div>
+        <div class="label">WUP-Dateien hier ablegen oder klicken</div>
+        <div class="hint">.wup-Dateien · mehrere möglich · alles bleibt lokal im Browser</div>
+        <input type="file" id="fileInput" multiple accept=".wup,.WUP,text/plain" aria-label="WUP-Dateien auswählen">
+      </div>
+      <div class="json-import-row">
+        <label for="jsonImportInput" class="action secondary" style="cursor: pointer; display: inline-block;">JSON-Konfiguration laden …</label>
+        <input type="file" id="jsonImportInput" accept=".json,application/json" style="display: none;">
+        <span class="json-import-status" id="jsonImportStatus"></span>
+      </div>
+      <div id="pendingImportPanel" class="pending-import-panel" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel">
+    <div class="panel-header"><span>Einstellungen</span></div>
+    <div class="panel-body">
+      <div class="settings-grid">
+        <div class="setting">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            Berechnungsmethode
+            <button type="button" id="methodHelpBtn" class="help-btn" title="Hilfe zu den Methoden">?</button>
+          </label>
+          <select id="displayMethod">
+            <option value="bbox">A · Bbox (Längsmaß × Höhe)</option>
+            <option value="varB" selected>B · Schatten + Eckverbindungen (empfohlen)</option>
+            <option value="shadow">C · Schattenwurf</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label>Raster-Auflösung [mm]</label>
+          <input type="number" id="rasterMm" value="2" min="1" max="20" step="1">
+        </div>
+        <div class="setting">
+          <label>Schwelle Fenster-Erkennung [m²]</label>
+          <input type="number" id="thresholdFenster" value="0.25" min="0.01" max="100" step="0.05">
+        </div>
+        <div class="setting">
+          <label>Auto-Abzug ab [m²]</label>
+          <input type="number" id="thresholdAbzug" value="2.5" min="0.1" max="100" step="0.1">
+        </div>
+        <div class="setting">
+          <label>&nbsp;</label>
+          <button class="action secondary" id="reanalyzeBtn" type="button" style="width: 100%;">Neu berechnen</button>
+        </div>
+      </div>
+      <div id="methodHelpBox" class="method-help-box" style="display: none;">
+        <div class="method-help-row">
+          <div class="method-help-letter a">A</div>
+          <div class="method-help-text">
+            <b>Bbox · Längsmaß × Höhe</b><br>
+            Brutto = Bounding-Box der Wand (umschreibendes Rechteck).
+            Alle aktiv markierten Öffnungen werden vom Brutto abgezogen.
+            Einfachstes Verfahren, ignoriert Eckschnitte und Schrägen.
+            <i>Geeignet für Massenermittlung wenn nur grobe Werte gebraucht werden.</i>
+          </div>
+        </div>
+        <div class="method-help-row">
+          <div class="method-help-letter b">B</div>
+          <div class="method-help-text">
+            <b>Schatten + Eckverbindungen <span style="color: var(--accent);">(empfohlen)</span></b><br>
+            Brutto = Schattenwurf (echte Plattenkontur) + manuell aufgefüllte Eckverbindungs-Schlitze.
+            Wenn der Abzug-Button bei einer bereits ausgesparten Öffnung deaktiviert ist, wird die
+            Öffnungsfläche zum Brutto addiert (= übermessen). So entscheidest du explizit pro
+            Öffnung, ob sie zur Wand zählt oder nicht.
+            <i>Geeignet für realistische Werte mit voller Kontrolle über jede Öffnung.</i>
+          </div>
+        </div>
+        <div class="method-help-row">
+          <div class="method-help-letter c">C</div>
+          <div class="method-help-text">
+            <b>Schattenwurf</b><br>
+            Brutto = nur der reine Schattenwurf (Plattenlagen vereinigt mit Riegelwerk).
+            Öffnungen, die im Schattenwurf bereits ausgespart sind, werden nicht erneut abgezogen
+            (verhindert Doppel-Abzug). Eckverbindungen werden nicht aufgefüllt.
+            <i>Geeignet wenn man der automatisch erkannten Geometrie vollständig vertrauen will.</i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsContainer">
+    <div class="empty-state">Keine Dateien geladen.</div>
+  </div>
+
+  <!-- Total -->
+  <div id="totalContainer" style="display: none;"></div>
+
+  <!-- Export -->
+  <div class="panel" id="exportPanel" style="display: none;">
+    <div class="panel-header"><span>Export</span></div>
+    <div class="panel-body">
+      <div class="button-row">
+        <button class="action" id="exportCsvBtn" type="button">CSV exportieren</button>
+        <button class="action secondary" id="exportJsonBtn" type="button">JSON exportieren</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Sticky Footer mit Σ-Ergebnis -->
+<div id="stickyFooter" class="sticky-footer" style="display: none;"></div>
+
+<script>
+/* =========================================================
+   WUP-PARSER & ANALYSE-ENGINE
+   Single-File · keine externen Abhängigkeiten
+   ========================================================= */
+
+(function() {
+  'use strict';
+
+  // ============================================================
+  //  STATE
+  // ============================================================
+  const state = {
+    files: [],     // [{name, raw, parsed, analysis}]
+    settings: {
+      rasterMm: 2,
+      thresholdFenster: 0.25,
+      thresholdAbzug: 2.5,
+      // Eckschlitz-Heuristik (für Variante B "auffüllen")
+      maxIndentDepthMm: 300,    // schmaler als das = Eckverbindung
+      maxIndentAreaM2: 0.25,    // kleiner als das = Eckverbindung
+    },
+    // Anzeige-Methode für die kompakte Pro-Wand-Übersicht: 'bbox' | 'varB' | 'shadow'
+    displayMethod: 'varB',
+    // Pro-Loch-Override: Map<fileIdx_wallIdx_holeIdx, true|false>  — true = abziehen, false = nicht abziehen
+    abzugOverrides: {},
+    // Pro-Einbuchtung-Override: Map<fileIdx_wallIdx_indentIdx, true|false>
+    indentOverrides: {},
+    // UI-State der Wand-Cards: welcher Tab ist aktiv, welche Card eingeklappt
+    // Map<`${fIdx}_${wIdx}`, {activeTab: string, collapsed: boolean}>
+    wallUiState: {},
+    // UI-State der Datei-Cards (nur Multiwand-Outer)
+    // Map<fIdx, {collapsed: boolean}>
+    fileUiState: {},
+    // Gelöschte Wände: Set<`${fIdx}_${wIdx}`>
+    deletedWalls: {},
+    // Aussteh­ender Import aus geladener JSON-Datei. {walls: [...]} — wird angewendet sobald
+    // passende WUP-Dateien geladen wurden. null wenn kein Import läuft.
+    pendingImport: null,
+  };
+
+  // ============================================================
+  //  WUP-PARSER
+  // ============================================================
+  // Splittet einen Befehlssatz wie "PLI1  2216, 460, 18, ...;"
+  // in {kw: "PLI1", params: ["2216","460",...]}
+  function parseLine(line) {
+    // Strip comment after ; (everything after ; is comment per spec)
+    const semicolonIdx = line.indexOf(';');
+    if (semicolonIdx >= 0) line = line.substring(0, semicolonIdx);
+    line = line.trim();
+    if (!line) return null;
+
+    // Split keyword from rest
+    const m = line.match(/^([A-Z][A-Z0-9_]*)\s*(.*)$/);
+    if (!m) return null;
+    const kw = m[1];
+    const rest = m[2].trim();
+    if (!rest) return { kw, params: [] };
+
+    // Params are comma-separated
+    const params = rest.split(',').map(p => p.trim());
+    return { kw, params };
+  }
+
+  function paramFloat(params, idx, dflt) {
+    if (idx >= params.length) return dflt;
+    const v = parseFloat(params[idx]);
+    return isNaN(v) ? dflt : v;
+  }
+  function paramInt(params, idx, dflt) {
+    if (idx >= params.length) return dflt;
+    const v = parseInt(params[idx], 10);
+    return isNaN(v) ? dflt : v;
+  }
+  function paramStr(params, idx, dflt) {
+    if (idx >= params.length) return dflt;
+    return params[idx];
+  }
+
+  // Plate-Layer Regex
+  const RX_PLATE = /^(PLI|PLA|SLI|SLA)(\d+)$/;
+  // Beam Regex
+  const RX_BEAM = /^(UG|OG|LS|QS|EBT|BT4|BT6|BTn|RT)$/;
+  // Bearbeitung-Begriffe, die einen aktiven Polygonzug terminieren
+  const PROCESSING_KW = new Set([
+    'NR','NBR','PSG','PSF','PSZ','PML','KN','PAF','MP','TA','SG','SZ',
+    'BOZ','BOY','BOX','FRZ','FRY','PFZ','PFY','PZF','MPL','KER','REFKER','NC','UNIT','ENDUNIT',
+    'PROPERTY','RBE','RBE2','ENDRBE2'
+  ]);
+
+  function parseWUP(text) {
+    // Normalisiere line-endings
+    const lines = text.split(/\r\n|\n|\r/);
+
+    const result = {
+      header: {},
+      beams: [],        // Holzbauteile
+      plates: [],       // Plattenlagen mit Umriss-Polygon
+      holes: [],        // PSF/PAF in Plattenlagen oder PSG-Innenpolygone
+      warnings: [],
+      stats: { totalLines: lines.length, parsedLines: 0, txtLines: 0 },
+      subWalls: [],     // Multiwand-Sub-Elemente aus TXT-Kommentaren
+    };
+
+    // ===== TXT-Kommentar-Pre-Pass: Multiwand-Strukturen erkennen =====
+    // WupConverter fügt Kommentar-Blöcke ein:
+    //   "Beginn Kommentare Element N: PROJECT.WANDNAME *********"
+    //   ... (mit ELN, ZNR, ELM, "WAND INSGESAMT XYZ")
+    //   "Ende Kommentare Element N: ..."
+    {
+      let currentSub = null;
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('TXT')) continue;
+        const content = t.replace(/^TXT\s+/, '').replace(/;$/, '').trim();
+
+        const beginMatch = content.match(/^Beginn Kommentare Element\s+(\d+)\s*:\s*(.+?)\s*\*+\s*$/);
+        if (beginMatch) {
+          const fullName = beginMatch[2].trim();
+          const wallName = fullName.split('.').pop();
+          currentSub = {
+            num: parseInt(beginMatch[1], 10),
+            fullName,
+            wallName,
+          };
+          continue;
+        }
+        if (currentSub) {
+          const elnM = content.match(/^ELN\s+(.+)$/);
+          if (elnM) currentSub.eln = elnM[1].trim();
+          const znrM = content.match(/^ZNR\s+(.+)$/);
+          if (znrM) currentSub.znr = znrM[1].trim();
+          const elbM = content.match(/^ELB\s+(.+)$/);
+          if (elbM) currentSub.elb = elbM[1].trim();
+          const elmM = content.match(/^ELM\s+([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+          if (elmM) {
+            currentSub.elm_lx = parseFloat(elmM[1]);
+            currentSub.elm_by = parseFloat(elmM[2]);
+            currentSub.elm_hz = parseFloat(elmM[3]);
+          }
+          const wandM = content.match(/^WAND INSGESAMT\s+([\d.]+)/);
+          if (wandM) currentSub.wandInsgesamt = parseFloat(wandM[1]);
+        }
+        if (content.startsWith('Ende Kommentare Element') && currentSub) {
+          result.subWalls.push(currentSub);
+          currentSub = null;
+        }
+      }
+    }
+
+    // Aktiver Kontext
+    let currentPlate = null;        // {type, layer, header, polygon: [[x,y]...], processings: []}
+    let currentBeam = null;
+    let currentPolyTarget = null;   // an welches Polygon-Array wir gerade PP-Punkte hängen
+    let currentPolyOwner = null;    // der besitzende Block (für Klassifikation)
+    let currentPolyKW = null;       // PSG / PSF / PAF / PLATE_OUTLINE etc.
+
+    // Pending PSG/PAF/PSF block (Bauteilbearbeitung oder Lagenbearbeitung)
+    function startPolygon(kw, owner) {
+      currentPolyKW = kw;
+      currentPolyTarget = [];
+      currentPolyOwner = owner;
+      // Owner darf das polygon später konsumieren
+      return currentPolyTarget;
+    }
+    function flushPolygon() {
+      if (currentPolyTarget && currentPolyOwner) {
+        currentPolyOwner.push({
+          kw: currentPolyKW,
+          points: currentPolyTarget,
+        });
+      }
+      currentPolyTarget = null;
+      currentPolyOwner = null;
+      currentPolyKW = null;
+    }
+
+    function newPlate(kw, params) {
+      flushPolygon();
+      const m = kw.match(RX_PLATE);
+      const plate = {
+        type: m[1],                              // PLI/PLA/SLI/SLA
+        layer: parseInt(m[2], 10),               // 0..10
+        kw: kw,
+        // PLI/PLA-Header: lx, by, hz, x, y, i, name [, z]
+        // SLI/SLA-Header: lx, by, hz, xlu, ylu, xmu, ymu, xru, yru, xro, yro, xmo, ymo, xlo, ylo, i, name, [z]
+        params: params,
+        outline: [],          // Plattenumriss-Polygon (XY)
+        psg: [],              // ein oder mehrere PSG-Konturen
+        psf: [],              // Sperrflächen
+        paf: [],              // Polygon-Ausfräsungen
+        psz: [],              // Schutzzonen
+        nailRows: [],
+      };
+      // PLI/PLA Header
+      if (plate.type === 'PLI' || plate.type === 'PLA') {
+        plate.lx = paramFloat(params, 0, 0);
+        plate.by = paramFloat(params, 1, 0);
+        plate.hz = paramFloat(params, 2, 0);
+        plate.x  = paramFloat(params, 3, 0);
+        plate.y  = paramFloat(params, 4, 0);
+        plate.materialIdx = paramInt(params, 5, 0);
+        plate.name = paramStr(params, 6, '');
+        plate.z  = paramFloat(params, 7, 0);
+      } else {
+        // SLI/SLA komplexer
+        plate.lx = paramFloat(params, 0, 0);
+        plate.by = paramFloat(params, 1, 0);
+        plate.hz = paramFloat(params, 2, 0);
+        plate.materialIdx = paramInt(params, 15, 0);
+        plate.name = paramStr(params, 16, '');
+        plate.z  = paramFloat(params, 17, 0);
+      }
+
+      result.plates.push(plate);
+      currentPlate = plate;
+      currentBeam = null;
+      // Direkt nach plate-def folgen PP-Punkte als Plattenumriss
+      currentPolyKW = 'OUTLINE';
+      currentPolyTarget = plate.outline;
+      currentPolyOwner = null;  // outline schreibt direkt
+    }
+
+    function newBeam(kw, params) {
+      flushPolygon();
+      const beam = { kw, params, processings: [] };
+      // Common
+      beam.lx = paramFloat(params, 0, 0);
+      beam.by = paramFloat(params, 1, 0);
+      beam.hz = paramFloat(params, 2, 0);
+
+      // Erkenne 12-Param-Variante (BT4 mit 4 expliziten Eckpunkten als Polygon)
+      // Format: lx, by, hz, x1, y1, x2, y2, x3, y3, x4, y4, materialIdx, name [, z]
+      // Heuristik: bei BT4/BT6 wenn >=12 numerische Werte vorne stehen
+      const looksLikePolygon =
+        (kw === 'BT4' || kw === 'BT6') &&
+        params.length >= 12 &&
+        // Erstes nicht-numerisches ab Index 11 (= materialIdx als int, dann name)
+        // Also Index 3..10 müssen alle numerisch sein
+        [3,4,5,6,7,8,9,10].every(i => !isNaN(parseFloat(params[i])));
+
+      if (looksLikePolygon) {
+        // 4-Eck-Polygon
+        const pts = [
+          [paramFloat(params, 3, 0), paramFloat(params, 4, 0)],
+          [paramFloat(params, 5, 0), paramFloat(params, 6, 0)],
+          [paramFloat(params, 7, 0), paramFloat(params, 8, 0)],
+          [paramFloat(params, 9, 0), paramFloat(params, 10, 0)],
+        ];
+        beam.materialIdx = paramInt(params, 11, 0);
+        beam.name = paramStr(params, 12, '');
+        beam.z = paramFloat(params, 13, 0);
+        // Bbox
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const [px, py] of pts) {
+          if (px < minX) minX = px; if (px > maxX) maxX = px;
+          if (py < minY) minY = py; if (py > maxY) maxY = py;
+        }
+        beam.x = minX; beam.y = minY;
+        beam.outline = [...pts, pts[0]];
+        beam.isTrapezoid = true;  // Marker für Visualisierung & Diagnose
+      } else if (kw === 'UG' || kw === 'OG' || kw === 'LS' || kw === 'EBT' || kw === 'BT4' || kw === 'BT6') {
+        // Standard 8-Param: Längsrichtung — lx (horizontal), by (Breite vertikal)
+        beam.x = paramFloat(params, 3, 0);
+        beam.y = paramFloat(params, 4, 0);
+        beam.materialIdx = paramInt(params, 5, 0);
+        beam.name = paramStr(params, 6, '');
+        beam.z = paramFloat(params, 7, 0);
+        beam.outline = [
+          [beam.x, beam.y],
+          [beam.x + beam.lx, beam.y],
+          [beam.x + beam.lx, beam.y + beam.by],
+          [beam.x, beam.y + beam.by],
+          [beam.x, beam.y],
+        ];
+      } else if (kw === 'QS') {
+        // Querrichtung — ly (vertikal), bx (Breite horizontal)
+        beam.ly = beam.lx; beam.bx = beam.by;
+        beam.x = paramFloat(params, 3, 0);
+        beam.y = paramFloat(params, 4, 0);
+        beam.materialIdx = paramInt(params, 5, 0);
+        beam.name = paramStr(params, 6, '');
+        beam.z = paramFloat(params, 7, 0);
+        beam.outline = [
+          [beam.x, beam.y],
+          [beam.x + beam.bx, beam.y],
+          [beam.x + beam.bx, beam.y + beam.ly],
+          [beam.x, beam.y + beam.ly],
+          [beam.x, beam.y],
+        ];
+      } else {
+        // RT etc. — keine Outline
+        beam.outline = null;
+      }
+      result.beams.push(beam);
+      currentBeam = beam;
+      currentPlate = null;
+      currentPolyTarget = null;
+    }
+
+    for (let rawLine of lines) {
+      const trimmed = rawLine.trim();
+      if (!trimmed) continue;
+
+      // Comments: TXT — extrahiere bekannte Felder aus den Header-Kommentaren
+      if (trimmed.startsWith('TXT')) {
+        result.stats.txtLines++;
+        // Format: "TXT     Schlüssel : Wert;" oder "TXT     KEY: value"
+        // Wir extrahieren bekannte Felder
+        const m = trimmed.match(/^TXT\s+([A-Za-zÄÖÜäöüß./ \-]+?)\s*:\s*(.+?)\s*;?$/);
+        if (m) {
+          const k = m[1].trim();
+          const v = m[2].trim();
+          if (!result.txt) result.txt = {};
+          // Bekannte Schlüssel normalisieren
+          const norm = k.toUpperCase();
+          if (norm === 'BAUVORHABEN' && v) result.txt.bauvorhaben = v;
+          else if (norm === 'PROJECT' && v) result.txt.project = v;
+          else if (norm === 'KUNDENNAME' && v) result.txt.kunde = v;
+          else if (norm === 'BV / KUNDEN NR' && v) result.txt.bvKundeNr = v;
+          else if (norm === 'ORT' && v) result.txt.ort = v;
+          else if (norm === 'BEARBEITER' && v) result.txt.bearbeiter = v;
+          else if (norm === 'OBJEKT' && v) result.txt.objekt = v;
+          else if (norm === 'ZEICHNUNG' && v) result.txt.zeichnung = v;
+        }
+        continue;
+      }
+
+      const parsed = parseLine(rawLine);
+      if (!parsed) continue;
+      result.stats.parsedLines++;
+
+      const { kw, params } = parsed;
+
+      // ===== Header keywords =====
+      if (kw === 'VERSION') { result.header.VERSION = params.join(','); continue; }
+      if (kw === 'ANR')     { result.header.ANR = params.join(','); continue; }
+      if (kw === 'ELB')     { result.header.ELB = params.join(','); continue; }
+      if (kw === 'ELN')     { result.header.ELN = params.join(','); continue; }
+      if (kw === 'ZNR')     { result.header.ZNR = params.join(','); continue; }
+      if (kw === 'REIHE')   { result.header.REIHE = params.join(','); continue; }
+      if (kw === 'STAPEL')  { result.header.STAPEL = params.join(','); continue; }
+      if (kw === 'ELA')     { result.header.ELA = params.join(','); continue; }
+      if (kw === 'ELM') {
+        result.header.ELM = {
+          lx: paramFloat(params, 0, 0),
+          by: paramFloat(params, 1, 0),
+          hz: paramFloat(params, 2, 0),
+          n:  paramInt(params, 3, 1),
+          xoffset: paramFloat(params, 4, 0),
+          yoffset: paramFloat(params, 5, 0),
+        };
+        continue;
+      }
+      if (kw === 'CAD' || kw === 'CADRELEASE' || kw === 'WNP') {
+        result.header[kw] = params.join(',');
+        continue;
+      }
+
+      // ===== Plate? =====
+      if (RX_PLATE.test(kw)) {
+        newPlate(kw, params);
+        continue;
+      }
+
+      // ===== Beam? =====
+      if (RX_BEAM.test(kw)) {
+        newBeam(kw, params);
+        continue;
+      }
+
+      // ===== Polygon points =====
+      if (kw === 'PP') {
+        if (currentPolyTarget) {
+          const x = paramFloat(params, 0, 0);
+          const y = paramFloat(params, 1, 0);
+          currentPolyTarget.push([x, y]);
+        }
+        continue;
+      }
+      if (kw === 'KB') {
+        // Kreisbogen — wir approximieren als Geraden für Phase 1 (Vereinfachung dokumentieren)
+        if (currentPolyTarget) {
+          const x = paramFloat(params, 0, 0);
+          const y = paramFloat(params, 1, 0);
+          // Phase 1: nur Endpunkt, kein echter Bogen — Fläche wird leicht unterschätzt
+          currentPolyTarget.push([x, y, 'KB']);
+        }
+        continue;
+      }
+      if (kw === 'MP') {
+        // Kreis als Innenausfräsung in einem PAF-Block
+        const x = paramFloat(params, 0, 0);
+        const y = paramFloat(params, 1, 0);
+        const r = paramFloat(params, 2, 0);
+        // Erzeuge Polygon-Approximation (32 Segmente)
+        if (currentPolyTarget) {
+          // direkt in den aktuellen Polygon-Container schreiben
+          const segs = 32;
+          for (let i = 0; i < segs; i++) {
+            const a = (i / segs) * Math.PI * 2;
+            currentPolyTarget.push([x + Math.cos(a) * Math.abs(r), y + Math.sin(a) * Math.abs(r)]);
+          }
+          // Schliessen
+          currentPolyTarget.push([x + Math.abs(r), y]);
+        } else if (currentPlate) {
+          // PAF mit MP, das nicht in laufendem Block startet (z.B. "PAF;\nMP ...")
+          const ring = [];
+          const segs = 32;
+          for (let i = 0; i <= segs; i++) {
+            const a = (i / segs) * Math.PI * 2;
+            ring.push([x + Math.cos(a) * Math.abs(r), y + Math.sin(a) * Math.abs(r)]);
+          }
+          currentPlate.paf.push({ kw: 'MP', points: ring });
+        }
+        continue;
+      }
+      if (kw === 'TA') {
+        // Tasche als rechteckige Innenausfräsung — direkte Geometrie
+        if (currentPlate) {
+          const lx = paramFloat(params, 0, 0);
+          const by = paramFloat(params, 1, 0);
+          const xm = paramFloat(params, 2, 0);
+          const ym = paramFloat(params, 3, 0);
+          // ignorieren wir z, t, r, alpha, delta für Phase 1
+          const ring = [
+            [xm - lx/2, ym - by/2],
+            [xm + lx/2, ym - by/2],
+            [xm + lx/2, ym + by/2],
+            [xm - lx/2, ym + by/2],
+            [xm - lx/2, ym - by/2],
+          ];
+          currentPlate.paf.push({ kw: 'TA', points: ring });
+        }
+        continue;
+      }
+
+      // ===== Plate processings =====
+      if (kw === 'PSG' && currentPlate) {
+        flushPolygon();
+        const block = { kw: 'PSG', points: [] };
+        currentPlate.psg.push(block);
+        currentPolyTarget = block.points;
+        currentPolyOwner = null;
+        currentPolyKW = 'PSG';
+        continue;
+      }
+      if (kw === 'PSF' && currentPlate) {
+        flushPolygon();
+        const block = { kw: 'PSF', points: [] };
+        currentPlate.psf.push(block);
+        currentPolyTarget = block.points;
+        currentPolyOwner = null;
+        continue;
+      }
+      if (kw === 'PSZ' && currentPlate) {
+        flushPolygon();
+        const block = { kw: 'PSZ', points: [] };
+        currentPlate.psz.push(block);
+        currentPolyTarget = block.points;
+        currentPolyOwner = null;
+        continue;
+      }
+      if (kw === 'PAF' && currentPlate) {
+        flushPolygon();
+        const block = { kw: 'PAF', points: [] };
+        currentPlate.paf.push(block);
+        currentPolyTarget = block.points;
+        currentPolyOwner = null;
+        continue;
+      }
+      if (kw === 'PML' && currentPlate) {
+        flushPolygon();
+        // Markierlinie — interessiert uns für Flächenberechnung nicht
+        currentPolyTarget = [];
+        currentPolyOwner = null;
+        continue;
+      }
+      if (kw === 'NR' && currentPlate) {
+        flushPolygon();
+        currentPlate.nailRows.push(params);
+        currentPolyTarget = null;
+        continue;
+      }
+      if (kw === 'NBR' && currentPlate) {
+        currentPolyTarget = null;
+        continue;
+      }
+
+      // ===== Beam processings =====
+      if (currentBeam) {
+        if (kw === 'PAF' || kw === 'PSG' || kw === 'PZF') {
+          flushPolygon();
+          const block = { kw, points: [] };
+          currentBeam.processings.push(block);
+          currentPolyTarget = block.points;
+          continue;
+        }
+        if (kw === 'BOZ' || kw === 'BOY' || kw === 'BOX' || kw === 'FRZ' || kw === 'FRY' ||
+            kw === 'PFZ' || kw === 'PFY' || kw === 'SG' || kw === 'SZ' || kw === 'KN') {
+          flushPolygon();
+          currentBeam.processings.push({ kw, params });
+          currentPolyTarget = null;
+          continue;
+        }
+      }
+
+      // ===== other (PROPERTY etc): ignored for Phase 1 =====
+      if (kw === 'PROPERTY') { continue; }
+
+      // Ende eines Polygonzugs durch unbekanntes Schlüsselwort
+      if (PROCESSING_KW.has(kw) || RX_BEAM.test(kw) || RX_PLATE.test(kw)) {
+        flushPolygon();
+      }
+    }
+    flushPolygon();
+
+    return result;
+  }
+
+  // ============================================================
+  //  GEOMETRIE-HELFER
+  // ============================================================
+
+  // Shoelace-Algorithmus für signierte Polygonfläche
+  function polygonArea(points) {
+    if (!points || points.length < 3) return 0;
+    let a = 0;
+    const n = points.length;
+    for (let i = 0; i < n - 1; i++) {
+      a += points[i][0] * points[i+1][1] - points[i+1][0] * points[i][1];
+    }
+    // close
+    a += points[n-1][0] * points[0][1] - points[0][0] * points[n-1][1];
+    return Math.abs(a) / 2;
+  }
+
+  function polygonBounds(points) {
+    if (!points || !points.length) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+      if (p[0] < minX) minX = p[0];
+      if (p[1] < minY) minY = p[1];
+      if (p[0] > maxX) maxX = p[0];
+      if (p[1] > maxY) maxY = p[1];
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
+  // ============================================================
+  //  RASTER-ENGINE (Pixel-basierte Boolean-Operationen)
+  //  Wir benutzen ein Uint8Array als Bitmap.
+  // ============================================================
+
+  function makeRaster(bounds, mmPerPx) {
+    const padding = 50;  // mm Rand
+    const minX = Math.floor(bounds.minX) - padding;
+    const minY = Math.floor(bounds.minY) - padding;
+    const maxX = Math.ceil(bounds.maxX) + padding;
+    const maxY = Math.ceil(bounds.maxY) + padding;
+    const w = Math.ceil((maxX - minX) / mmPerPx);
+    const h = Math.ceil((maxY - minY) / mmPerPx);
+    return {
+      data: new Uint8Array(w * h),
+      w, h, minX, minY, maxX, maxY, mmPerPx,
+    };
+  }
+
+  // Polygon in Raster einzeichnen (Scanline-Fill). value=1 setzt, value=0 löscht.
+  function fillPolygon(raster, points, value) {
+    if (!points || points.length < 3) return;
+    const { w, h, minX, minY, mmPerPx, data } = raster;
+
+    // Pixel-Koordinaten
+    const pts = points.map(p => [
+      (p[0] - minX) / mmPerPx,
+      (p[1] - minY) / mmPerPx,
+    ]);
+    // Schließen falls nicht geschlossen
+    const last = pts[pts.length - 1];
+    const first = pts[0];
+    if (last[0] !== first[0] || last[1] !== first[1]) {
+      pts.push([first[0], first[1]]);
+    }
+
+    // Bounds
+    let minRow = Infinity, maxRow = -Infinity;
+    for (const p of pts) {
+      if (p[1] < minRow) minRow = p[1];
+      if (p[1] > maxRow) maxRow = p[1];
+    }
+    minRow = Math.max(0, Math.floor(minRow));
+    maxRow = Math.min(h - 1, Math.ceil(maxRow));
+
+    // Pro Scanline: alle Schnittpunkte mit Polygonkanten, sortieren, paarweise füllen
+    for (let y = minRow; y <= maxRow; y++) {
+      const yc = y + 0.5;
+      const xs = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, y1] = pts[i];
+        const [x2, y2] = pts[i+1];
+        if ((y1 <= yc && y2 > yc) || (y2 <= yc && y1 > yc)) {
+          const t = (yc - y1) / (y2 - y1);
+          const xi = x1 + t * (x2 - x1);
+          xs.push(xi);
+        }
+      }
+      xs.sort((a, b) => a - b);
+      for (let i = 0; i + 1 < xs.length; i += 2) {
+        const xa = Math.max(0, Math.floor(xs[i]));
+        const xb = Math.min(w - 1, Math.ceil(xs[i+1]));
+        const rowOffset = y * w;
+        for (let x = xa; x <= xb; x++) {
+          data[rowOffset + x] = value;
+        }
+      }
+    }
+  }
+
+  // Pixel zählen
+  function countPixels(raster) {
+    let cnt = 0;
+    const d = raster.data;
+    for (let i = 0; i < d.length; i++) if (d[i]) cnt++;
+    return cnt;
+  }
+
+  // Connected-Components-Analyse: Findet Löcher (zusammenhängende 0-Bereiche, die NICHT mit dem Rand verbunden sind)
+  // Algorithmus: Flood-Fill vom Rand → alle erreichten 0-Pixel sind "außen". Übrige 0-Pixel sind innere Löcher.
+  function findHoles(raster) {
+    const { w, h, data } = raster;
+    const visited = new Uint8Array(w * h);
+    const queue = [];
+
+    // Rand-Floodfill: alle Randpixel die =0 sind, als "außen" markieren
+    for (let x = 0; x < w; x++) {
+      if (!data[x]) { visited[x] = 1; queue.push(x); }
+      const idx = (h - 1) * w + x;
+      if (!data[idx]) { visited[idx] = 1; queue.push(idx); }
+    }
+    for (let y = 0; y < h; y++) {
+      const a = y * w; if (!data[a]) { visited[a] = 1; queue.push(a); }
+      const b = a + w - 1; if (!data[b]) { visited[b] = 1; queue.push(b); }
+    }
+    // BFS
+    while (queue.length > 0) {
+      const idx = queue.pop();
+      const x = idx % w;
+      const y = (idx - x) / w;
+      // 4-connectivity
+      if (x > 0) {
+        const n = idx - 1;
+        if (!visited[n] && !data[n]) { visited[n] = 1; queue.push(n); }
+      }
+      if (x < w - 1) {
+        const n = idx + 1;
+        if (!visited[n] && !data[n]) { visited[n] = 1; queue.push(n); }
+      }
+      if (y > 0) {
+        const n = idx - w;
+        if (!visited[n] && !data[n]) { visited[n] = 1; queue.push(n); }
+      }
+      if (y < h - 1) {
+        const n = idx + w;
+        if (!visited[n] && !data[n]) { visited[n] = 1; queue.push(n); }
+      }
+    }
+
+    // Jetzt: alle nicht-visited 0-Pixel sind interne Löcher.
+    // Finde zusammenhängende Komponenten
+    const holes = [];
+    for (let i = 0; i < w * h; i++) {
+      if (!data[i] && !visited[i]) {
+        // Flood-fill diese Komponente
+        const comp = [];
+        const q2 = [i];
+        visited[i] = 1;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        while (q2.length > 0) {
+          const idx = q2.pop();
+          comp.push(idx);
+          const x = idx % w;
+          const y = (idx - x) / w;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+          if (x > 0) { const n = idx - 1; if (!visited[n] && !data[n]) { visited[n] = 1; q2.push(n); } }
+          if (x < w - 1) { const n = idx + 1; if (!visited[n] && !data[n]) { visited[n] = 1; q2.push(n); } }
+          if (y > 0) { const n = idx - w; if (!visited[n] && !data[n]) { visited[n] = 1; q2.push(n); } }
+          if (y < h - 1) { const n = idx + w; if (!visited[n] && !data[n]) { visited[n] = 1; q2.push(n); } }
+        }
+        holes.push({
+          pixelCount: comp.length,
+          bbox: { minX, maxX, minY, maxY },
+          // Mittelpunkt in Welt-Koordinaten:
+          centerX: raster.minX + ((minX + maxX) / 2 + 0.5) * raster.mmPerPx,
+          centerY: raster.minY + ((minY + maxY) / 2 + 0.5) * raster.mmPerPx,
+          worldW: (maxX - minX + 1) * raster.mmPerPx,
+          worldH: (maxY - minY + 1) * raster.mmPerPx,
+        });
+      }
+    }
+    return holes;
+  }
+
+  // Verfolgt den Polygon-Rand einer Pixel-Komponente.
+  // Eingabe: Set von Pixel-Indizes, Raster-Dimensionen.
+  // Ausgabe: Liste von Polygonen (jedes als Array von [x,y]-Eckpunkten in Pixel-Koordinaten).
+  // Eine Komponente kann mehrere Polygone haben (Außenrand + ggf. innere Löcher).
+  function tracePixelContours(pixelSet, w, h) {
+    // Sammle alle "Rand-Kanten" pixelweise.
+    // Pixel (x,y) hat Ecken bei (x,y), (x+1,y), (x+1,y+1), (x,y+1).
+    // Eine Kante gehört zum Rand wenn der Nachbarpixel NICHT in der Komponente ist.
+    // Wir sammeln die Kanten richtungsorientiert (im Uhrzeigersinn um den Pixel),
+    // damit wir sie später als geschlossenen Pfad zusammenfügen können.
+    //
+    // Map: vom Startpunkt einer Kante zu einer Liste von Endpunkten.
+    // (Eine Ecke kann in mehreren Kanten Start sein bei komplexen Formen.)
+    const edgeMap = new Map();   // key="x,y" -> [endpoint1, endpoint2, ...]
+    function addEdge(ax, ay, bx, by) {
+      const key = ax + ',' + ay;
+      let arr = edgeMap.get(key);
+      if (!arr) { arr = []; edgeMap.set(key, arr); }
+      arr.push([bx, by]);
+    }
+
+    for (const idx of pixelSet) {
+      const px = idx % w;
+      const py = (idx - px) / w;
+      // Obere Kante: (px,py) -> (px+1,py), wenn Nachbar oben (py-1) nicht in Set
+      if (py === 0 || !pixelSet.has(idx - w)) addEdge(px, py, px+1, py);
+      // Rechte Kante: (px+1,py) -> (px+1,py+1), wenn Nachbar rechts (px+1) nicht in Set
+      if (px === w-1 || !pixelSet.has(idx + 1)) addEdge(px+1, py, px+1, py+1);
+      // Untere Kante: (px+1,py+1) -> (px,py+1), wenn Nachbar unten (py+1) nicht in Set
+      if (py === h-1 || !pixelSet.has(idx + w)) addEdge(px+1, py+1, px, py+1);
+      // Linke Kante: (px,py+1) -> (px,py), wenn Nachbar links (px-1) nicht in Set
+      if (px === 0 || !pixelSet.has(idx - 1)) addEdge(px, py+1, px, py);
+    }
+
+    // Nun: aus diesen orientierten Kanten geschlossene Pfade bauen.
+    const polygons = [];
+    while (edgeMap.size > 0) {
+      // Starte bei einer beliebigen Kante
+      let firstKey = null;
+      for (const k of edgeMap.keys()) { firstKey = k; break; }
+      if (!firstKey) break;
+      const startCoords = firstKey.split(',').map(Number);
+      const start = [startCoords[0], startCoords[1]];
+
+      const poly = [start];
+      let cur = start;
+      let safety = 0;
+      while (safety++ < 10 * pixelSet.size + 100) {
+        const curKey = cur[0] + ',' + cur[1];
+        const arr = edgeMap.get(curKey);
+        if (!arr || arr.length === 0) {
+          edgeMap.delete(curKey);
+          break;
+        }
+        const next = arr.shift();
+        if (arr.length === 0) edgeMap.delete(curKey);
+
+        if (next[0] === start[0] && next[1] === start[1]) {
+          // Polygon geschlossen
+          break;
+        }
+        poly.push(next);
+        cur = next;
+      }
+      if (poly.length >= 3) polygons.push(poly);
+    }
+    return polygons;
+  }
+
+  // Vereinfache Polygon: entferne kollineare Zwischenpunkte (Pixel-genau, also nur exakte Kollinearität).
+  function simplifyPolygon(poly) {
+    if (poly.length < 3) return poly;
+    const out = [poly[0]];
+    for (let i = 1; i < poly.length; i++) {
+      const pPrev = out[out.length - 1];
+      const pCur = poly[i];
+      const pNext = poly[(i + 1) % poly.length];
+      const dx1 = pCur[0] - pPrev[0], dy1 = pCur[1] - pPrev[1];
+      const dx2 = pNext[0] - pCur[0], dy2 = pNext[1] - pCur[1];
+      const cross = dx1 * dy2 - dy1 * dx2;
+      if (cross !== 0) out.push(pCur);
+    }
+    // Ende-zu-Anfang prüfen
+    if (out.length >= 3) {
+      const a = out[out.length - 2], b = out[out.length - 1], c = out[0];
+      const dx1 = b[0] - a[0], dy1 = b[1] - a[1];
+      const dx2 = c[0] - b[0], dy2 = c[1] - b[1];
+      if (dx1 * dy2 - dy1 * dx2 === 0) out.pop();
+    }
+    return out;
+  }
+
+  // Findet Rand-Einbuchtungen (Bbox - Schattenwurf), die mind. eine Plattenkante berühren.
+  // Returns: Array von {areaM2, worldW, worldH, centerX, centerY, edges, defaultFill, polygon}
+  // polygon: Array von [x,y]-Eckpunkten in Welt-Koordinaten (mm)
+  // Findet alle border-touching Komponenten (Bbox \ Schattenwurf) und klassifiziert sie:
+  // - Genau 1 berührte Bbox-Kante → "openings": bodentiefes/deckenhohes Fenster oder Tür
+  // - 2+ berührte Kanten → "indents": Eckverbindungs-Schlitz oder Sonderform
+  // Returns: { openings, indents }
+  function findBorderComponents(shadowRaster, polyBoundsX, polyBoundsY, autoFillCriteria, openingThresholds) {
+    const { w, h, data, mmPerPx, minX, minY } = shadowRaster;
+    const bxLo = Math.round((polyBoundsX[0] - minX) / mmPerPx);
+    const bxHi = Math.round((polyBoundsX[1] - minX) / mmPerPx) - 1;
+    const byLo = Math.round((polyBoundsY[0] - minY) / mmPerPx);
+    const byHi = Math.round((polyBoundsY[1] - minY) / mmPerPx) - 1;
+
+    // diff[i] = 1 wenn innerhalb der Bbox UND nicht im Schattenwurf
+    const diff = new Uint8Array(w * h);
+    for (let y = Math.max(0, byLo); y <= Math.min(h - 1, byHi); y++) {
+      for (let x = Math.max(0, bxLo); x <= Math.min(w - 1, bxHi); x++) {
+        const idx = y * w + x;
+        if (!data[idx]) diff[idx] = 1;
+      }
+    }
+
+    // Connected Components mit Pixel-Set für späteres Tracing
+    const visited = new Uint8Array(w * h);
+    const allComps = [];
+    for (let i = 0; i < w * h; i++) {
+      if (diff[i] && !visited[i]) {
+        const q = [i];
+        visited[i] = 1;
+        const pixelSet = new Set();
+        let cnt = 0;
+        let mnX = w, mxX = 0, mnY = h, mxY = 0;
+        let touchesBorder = false;
+        while (q.length > 0) {
+          const idx = q.pop();
+          pixelSet.add(idx);
+          cnt++;
+          const x = idx % w;
+          const y = (idx - x) / w;
+          if (x <= bxLo || x >= bxHi || y <= byLo || y >= byHi) touchesBorder = true;
+          if (x < mnX) mnX = x; if (x > mxX) mxX = x;
+          if (y < mnY) mnY = y; if (y > mxY) mxY = y;
+          if (x > 0)     { const n = idx - 1; if (!visited[n] && diff[n]) { visited[n] = 1; q.push(n); } }
+          if (x < w - 1) { const n = idx + 1; if (!visited[n] && diff[n]) { visited[n] = 1; q.push(n); } }
+          if (y > 0)     { const n = idx - w; if (!visited[n] && diff[n]) { visited[n] = 1; q.push(n); } }
+          if (y < h - 1) { const n = idx + w; if (!visited[n] && diff[n]) { visited[n] = 1; q.push(n); } }
+        }
+        if (!touchesBorder) continue;
+
+        const wxMin = minX + mnX * mmPerPx;
+        const wxMax = minX + (mxX + 1) * mmPerPx;
+        const wyMin = minY + mnY * mmPerPx;
+        const wyMax = minY + (mxY + 1) * mmPerPx;
+        const edges = [];
+        if (wxMin <= polyBoundsX[0] + 2) edges.push('L');
+        if (wxMax >= polyBoundsX[1] - 2) edges.push('R');
+        if (wyMin <= polyBoundsY[0] + 2) edges.push('U');
+        if (wyMax >= polyBoundsY[1] - 2) edges.push('O');
+
+        const areaM2 = cnt * mmPerPx * mmPerPx / 1e6;
+        const worldW = wxMax - wxMin;
+        const worldH = wyMax - wyMin;
+
+        // Echte Polygon-Kontur extrahieren (Pixel-Ränder verfolgen)
+        const pixelPolygons = tracePixelContours(pixelSet, w, h);
+        const worldPolygons = pixelPolygons.map(p => {
+          const simplified = simplifyPolygon(p);
+          return simplified.map(([px, py]) => [
+            minX + px * mmPerPx,
+            minY + py * mmPerPx,
+          ]);
+        });
+
+        allComps.push({
+          areaM2, worldW, worldH,
+          centerX: (wxMin + wxMax) / 2,
+          centerY: (wyMin + wyMax) / 2,
+          edges, polygons: worldPolygons,
+        });
+      }
+    }
+
+    // Klassifikation: 1 Kante → Opening (Fenster/Tür), 2+ Kanten → Indent
+    const openings = [];
+    const indents = [];
+
+    // Mindest-Tiefe: ein Fenster/eine Tür braucht in BEIDEN Richtungen eine sinnvolle Größe.
+    // Ganz dünne Streifen (z.B. 36mm hoch × 2000mm breit) sind Rasterungs-Artefakte oder
+    // Plattenstöße, keine echten Öffnungen.
+    const minOpeningEdgeMm = openingThresholds.minEdgeMm || 100;
+
+    for (const c of allComps) {
+      const minEdgeMm = Math.min(c.worldW, c.worldH);
+
+      if (c.edges.length === 1 && minEdgeMm >= minOpeningEdgeMm) {
+        // Bodentiefes/deckenhohes Fenster oder Tür
+        const minSize = openingThresholds.minSizeM2 || 0.05;
+        if (c.areaM2 < minSize) {
+          // Zu klein — als Indent klassifizieren (Sonderform)
+          c.defaultFill = (
+            minEdgeMm <= autoFillCriteria.maxIndentDepthMm &&
+            c.areaM2 < autoFillCriteria.maxIndentAreaM2
+          );
+          indents.push(c);
+          continue;
+        }
+        // Kategorisiere wie ein normales Hole
+        let category;
+        if (c.areaM2 < openingThresholds.thresholdFenster) category = 'klein';
+        else if (c.areaM2 < openingThresholds.thresholdAbzug) category = 'fenster';
+        else category = 'tuer';
+        openings.push({
+          areaM2: c.areaM2,
+          worldW: c.worldW, worldH: c.worldH,
+          centerX: c.centerX, centerY: c.centerY,
+          category,
+          defaultAbzug: c.areaM2 >= openingThresholds.thresholdAbzug,
+          edges: c.edges,
+          polygons: c.polygons,
+          isBorderOpening: true,
+          borderEdge: c.edges[0],
+        });
+      } else {
+        // 2+ Kanten ODER zu dünner 1-Kanten-Streifen → Rand-Einbuchtung
+        c.defaultFill = (
+          minEdgeMm <= autoFillCriteria.maxIndentDepthMm &&
+          c.areaM2 < autoFillCriteria.maxIndentAreaM2
+        );
+        indents.push(c);
+      }
+    }
+
+    indents.sort((a, b) => b.areaM2 - a.areaM2);
+    indents.forEach((c, i) => c.idx = i);
+    openings.sort((a, b) => b.areaM2 - a.areaM2);
+    // openings.idx wird später zusammen mit den internen Holes vergeben
+
+    return { openings, indents };
+  }
+
+  // Backwards-compat Alias
+  function findBorderIndents(shadowRaster, polyBoundsX, polyBoundsY, autoFillCriteria) {
+    return findBorderComponents(shadowRaster, polyBoundsX, polyBoundsY, autoFillCriteria, {
+      thresholdFenster: 0.25, thresholdAbzug: 2.5, minSizeM2: 0.05, minEdgeMm: 100,
+    }).indents;
+  }
+
+  // Schneidet ein Polygon (auch Trapeze) auf einen X-Bereich zu via Sutherland-Hodgman.
+  // Returns das geclipte Polygon oder null wenn vollständig außerhalb.
+  function clipBeamToXRange(beamOutline, xMin, xMax) {
+    if (!beamOutline || beamOutline.length < 3) return null;
+
+    // Polygon ohne den schließenden duplizierten Endpunkt
+    let poly = beamOutline.slice();
+    if (poly.length > 1 && poly[0][0] === poly[poly.length-1][0] && poly[0][1] === poly[poly.length-1][1]) {
+      poly = poly.slice(0, -1);
+    }
+
+    // Clip an vertikaler Linie x = clipX, keepSide: 'right' (x >= clipX) oder 'left' (x <= clipX)
+    function clipLine(input, clipX, keepRight) {
+      if (input.length === 0) return [];
+      const out = [];
+      for (let i = 0; i < input.length; i++) {
+        const cur = input[i];
+        const prev = input[(i + input.length - 1) % input.length];
+        const curIn = keepRight ? cur[0] >= clipX : cur[0] <= clipX;
+        const prevIn = keepRight ? prev[0] >= clipX : prev[0] <= clipX;
+        if (curIn) {
+          if (!prevIn) {
+            // Schnittpunkt einfügen
+            const t = (clipX - prev[0]) / (cur[0] - prev[0]);
+            out.push([clipX, prev[1] + t * (cur[1] - prev[1])]);
+          }
+          out.push(cur);
+        } else if (prevIn) {
+          // Verlasse: Schnittpunkt einfügen
+          const t = (clipX - prev[0]) / (cur[0] - prev[0]);
+          out.push([clipX, prev[1] + t * (cur[1] - prev[1])]);
+        }
+      }
+      return out;
+    }
+
+    // Erst rechts vom xMin behalten, dann links von xMax
+    let clipped = clipLine(poly, xMin, true);
+    clipped = clipLine(clipped, xMax, false);
+
+    if (clipped.length < 3) return null;
+    // Polygon schließen
+    return [...clipped, clipped[0]];
+  }
+
+  // ============================================================
+  //  WANDGRENZEN-ERKENNUNG
+  // ============================================================
+  // Returns: array of {xMin, xMax, name?, eln?, znr?, elb?, source}
+  //   source: 'txt' | 'gaps' | 'single'
+  function detectWallRanges(parsed, settings) {
+    // 1) Versuch: aus TXT-Kommentaren (zuverlässig wenn vorhanden)
+    const subWalls = parsed.subWalls || [];
+
+    // Sammle alle relevanten Plattenlagen (Material- und Layer-Filter)
+    const relevantPlates = [];
+    for (const plate of parsed.plates) {
+      const m = plate.materialIdx;
+      const isDaemmung = (m >= 140 && m <= 159) || (m >= 230 && m <= 259) || (m >= 180 && m <= 189);
+      const isInGefach = plate.layer === 0;
+      const tooThin = plate.hz <= 1;
+      if (isDaemmung || isInGefach || tooThin) continue;
+
+      let outerPolygon = null;
+      if (plate.psg && plate.psg.length > 0 && plate.psg[0].points.length >= 3) {
+        outerPolygon = plate.psg[0].points;
+      } else if (plate.outline && plate.outline.length >= 3) {
+        outerPolygon = plate.outline;
+      }
+      if (!outerPolygon) continue;
+
+      let xMin = Infinity, xMax = -Infinity;
+      for (const pt of outerPolygon) {
+        if (pt[0] < xMin) xMin = pt[0];
+        if (pt[0] > xMax) xMax = pt[0];
+      }
+      relevantPlates.push({ plate, polygon: outerPolygon, xMin, xMax });
+    }
+
+    if (relevantPlates.length === 0) {
+      return [{ xMin: 0, xMax: 0, source: 'single', name: parsed.header.ELN || 'Wand' }];
+    }
+
+    // 2) Cluster die Plattenlagen anhand X-Lücken
+    const intervals = relevantPlates.map(p => [p.xMin, p.xMax]).sort((a, b) => a[0] - b[0]);
+    const gapTolerance = 50; // mm — Plattenstöße innerhalb einer Wand mit Spiel
+    const clusters = [[intervals[0][0], intervals[0][1]]];
+    for (let i = 1; i < intervals.length; i++) {
+      const [s, e] = intervals[i];
+      if (s <= clusters[clusters.length - 1][1] + gapTolerance) {
+        clusters[clusters.length - 1][1] = Math.max(clusters[clusters.length - 1][1], e);
+      } else {
+        clusters.push([s, e]);
+      }
+    }
+
+    // Falls TXT-Kommentare vorhanden, mappen wir auf die Cluster (in Reihenfolge)
+    if (subWalls.length > 0) {
+      const ranges = [];
+      // Heuristik: Reihenfolge der TXT-Wände entspricht Reihenfolge der Cluster (aufsteigend X)
+      const n = Math.min(subWalls.length, clusters.length);
+      for (let i = 0; i < n; i++) {
+        const [xMin, xMax] = clusters[i];
+        const sw = subWalls[i];
+        ranges.push({
+          xMin, xMax,
+          name: sw.znr || sw.eln || sw.wallName || `Wand ${i+1}`,
+          eln: sw.eln,
+          znr: sw.znr,
+          elb: sw.elb,
+          source: 'txt',
+        });
+      }
+      // Falls mehr TXT als Cluster (theoretisch) oder mehr Cluster als TXT
+      if (subWalls.length > n) {
+        for (let i = n; i < subWalls.length; i++) {
+          const sw = subWalls[i];
+          ranges.push({ xMin: 0, xMax: 0, name: sw.znr || sw.eln, source: 'txt-orphan' });
+        }
+      }
+      if (clusters.length > n) {
+        for (let i = n; i < clusters.length; i++) {
+          ranges.push({ xMin: clusters[i][0], xMax: clusters[i][1], name: `Wand ${i+1}`, source: 'gaps' });
+        }
+      }
+      return ranges;
+    }
+
+    // 3) Fallback: nur Plattenlücken — aber nur wenn mehrere Cluster existieren
+    if (clusters.length > 1) {
+      return clusters.map((c, i) => ({
+        xMin: c[0], xMax: c[1],
+        name: `Wand ${i+1}`,
+        source: 'gaps',
+      }));
+    }
+
+    // 4) Einzelwand
+    return [{
+      xMin: clusters[0][0], xMax: clusters[0][1],
+      name: parsed.header.ELN || 'Wand',
+      eln: parsed.header.ELN,
+      znr: parsed.header.ZNR,
+      elb: parsed.header.ELB,
+      source: 'single',
+    }];
+  }
+
+  // ============================================================
+  //  ANALYSE-PIPELINE PRO DATEI (Multiwand-fähig)
+  //
+  //  Strategie:
+  //   1) Wandgrenzen erkennen (TXT-Kommentare → Plattenlücken → Einzelwand)
+  //   2) Pro Wand: Plattenlagen zuordnen, Bauteile auf Wandgrenzen zuschneiden
+  //   3) Pro Wand: komplette Pipeline (Bbox, Schatten, Indents, Holes)
+  //
+  //  Pro-Wand-Pipeline:
+  //   1) PLATTENSCHATTEN = Vereinigung aller relevanten Plattenlagen
+  //      ohne Gefachdämmung & Folien & dünne Lagen.
+  //   2) BAUTEILSCHATTEN = Vereinigung aller tragenden Bauteile
+  //      (LS, QS, OG, UG, EBT, BT4, BT6) mit hz>1, auf Wandgrenzen zugeschnitten.
+  //   3) SCHATTENWURF = S ∪ B
+  //   4) BBOX-METHODE = umschließendes Rechteck aller Polygonpunkte der Wand
+  //   5) VARIANTE B = Schattenwurf + ausgewählte Rand-Einbuchtungen
+  //   6) FENSTER/TÜR-ERKENNUNG in der Innenbeplankung
+  // ============================================================
+  function analyzeFile(parsed, settings) {
+    // 1) Erkenne Wandgrenzen
+    const wallRanges = detectWallRanges(parsed, settings);
+
+    // 2) Plattenlagen klassifizieren (gemeinsam für alle Wände)
+    const allPlatePolys = [];
+    for (const plate of parsed.plates) {
+      const m = plate.materialIdx;
+      const isDaemmung = (m >= 140 && m <= 159) || (m >= 230 && m <= 259) || (m >= 180 && m <= 189);
+      const isInGefach = plate.layer === 0;
+      const tooThin = plate.hz <= 1;
+
+      let outerPolygon = null;
+      if (plate.psg && plate.psg.length > 0 && plate.psg[0].points.length >= 3) {
+        outerPolygon = plate.psg[0].points;
+      } else if (plate.outline && plate.outline.length >= 3) {
+        outerPolygon = plate.outline;
+      }
+      if (!outerPolygon) continue;
+
+      let reason = null;
+      if (tooThin) reason = 'h≤1mm';
+      else if (isInGefach) reason = 'Lage 0 (Gefach)';
+      else if (isDaemmung) reason = 'Dämmung/Folie';
+
+      // X-Bereich der Plattenlage
+      let xMin = Infinity, xMax = -Infinity;
+      for (const pt of outerPolygon) {
+        if (pt[0] < xMin) xMin = pt[0];
+        if (pt[0] > xMax) xMax = pt[0];
+      }
+
+      allPlatePolys.push({
+        plate,
+        polygon: outerPolygon,
+        excludedFromShadow: !!reason,
+        reason,
+        xMin, xMax,
+      });
+    }
+
+    // 3) Bauteile sammeln (gemeinsam)
+    const allBeams = (parsed.beams || []).filter(b =>
+      b.outline && b.outline.length >= 3 && b.hz > 1
+    );
+
+    // 4) Pro Wand analysieren
+    const walls = [];
+    for (let wIdx = 0; wIdx < wallRanges.length; wIdx++) {
+      const wr = wallRanges[wIdx];
+      const isMulti = wallRanges.length > 1;
+
+      // Plattenlagen dieser Wand: Zentrum oder Bereich überlappt mit Wand
+      const wallPlatePolys = allPlatePolys.filter(pp => {
+        if (!isMulti) return true;
+        // Plattenmitte muss im Wandbereich liegen — robustere Heuristik:
+        // mindestens 50% der Plattenbreite muss innerhalb der Wand liegen
+        const pCenter = (pp.xMin + pp.xMax) / 2;
+        const tolerance = 50; // mm
+        return pCenter >= wr.xMin - tolerance && pCenter <= wr.xMax + tolerance;
+      });
+
+      // Bauteile dieser Wand: zugeschnitten auf Wandgrenzen
+      const wallBeams = [];
+      for (const b of allBeams) {
+        if (!isMulti) {
+          wallBeams.push(b);
+          continue;
+        }
+        // Clipping: schneide Polygon auf [xMin..xMax] zu
+        const clippedOutline = clipBeamToXRange(b.outline, wr.xMin, wr.xMax);
+        if (clippedOutline) {
+          wallBeams.push({
+            ...b,
+            outline: clippedOutline,
+            wasClipped: clippedOutline !== b.outline,
+          });
+        }
+      }
+
+      // Pro-Wand-Pipeline (wie bisher analyzeFile)
+      const wallAnalysis = analyzeWall(wallPlatePolys, wallBeams, settings, wr);
+      wallAnalysis.range = wr;
+      walls.push(wallAnalysis);
+    }
+
+    return {
+      isMultiWall: wallRanges.length > 1,
+      wallCount: wallRanges.length,
+      walls,
+      // Für Rückwärtskompatibilität: Top-Level-Felder von der ersten Wand
+      ...(walls.length > 0 && !walls[0].error ? walls[0] : {}),
+    };
+  }
+
+  // Pipeline für eine einzelne Wand (oder Wand-Teil bei Multiwand)
+  // Annotiert jede Öffnung mit shadowOverlapPx und alreadyExcludedFromShadow.
+  // shadowOverlapPx = Pixel der Öffnungs-Bbox die IM Schatten liegen
+  // alreadyExcludedFromShadow = true wenn die Öffnung mehrheitlich AUSSERHALB des Schattens liegt
+  //   (= Schattenwurf hat den Bereich bereits "ausgespart" → kein doppelter Abzug bei Methode B/C)
+  function annotateHolesShadowOverlap(holes, shadowRaster, pxArea) {
+    const { w, h, minX, minY, mmPerPx, data } = shadowRaster;
+    for (const hole of holes) {
+      // Bbox der Öffnung
+      const xMin = hole.centerX - hole.worldW / 2;
+      const yMin = hole.centerY - hole.worldH / 2;
+      const xMax = hole.centerX + hole.worldW / 2;
+      const yMax = hole.centerY + hole.worldH / 2;
+      // Auf Pixel-Grid runden
+      const pxMinX = Math.max(0, Math.floor((xMin - minX) / mmPerPx));
+      const pxMaxX = Math.min(w - 1, Math.ceil((xMax - minX) / mmPerPx));
+      const pxMinY = Math.max(0, Math.floor((yMin - minY) / mmPerPx));
+      const pxMaxY = Math.min(h - 1, Math.ceil((yMax - minY) / mmPerPx));
+      let inShadow = 0, total = 0;
+      for (let y = pxMinY; y <= pxMaxY; y++) {
+        for (let x = pxMinX; x <= pxMaxX; x++) {
+          total++;
+          if (data[y * w + x]) inShadow++;
+        }
+      }
+      const overlapRatio = total > 0 ? inShadow / total : 0;
+      hole.shadowOverlapM2 = inShadow * pxArea / 1e6;
+      hole.shadowOverlapRatio = overlapRatio;
+      // Wenn weniger als 30% der Öffnungs-Bbox vom Schattenwurf abgedeckt sind,
+      // gilt die Öffnung als bereits ausgespart (kein Doppel-Abzug nötig)
+      hole.alreadyExcludedFromShadow = overlapRatio < 0.3;
+    }
+  }
+
+  function analyzeWall(platePolys, tragendeBeams, settings, wallRange) {
+    const warnings = [];  // {level: 'error'|'warning'|'info', msg: string}
+
+    const includedPolys = platePolys.filter(p => !p.excludedFromShadow);
+
+    // === HARD ERROR: nichts da ===
+    if (includedPolys.length === 0 && tragendeBeams.length === 0) {
+      return {
+        error: 'Keine relevanten Plattenlagen oder Bauteile gefunden',
+        platePolys,
+        warnings: [{ level: 'error', msg: 'Datei enthält weder verwendbare Plattenlagen noch tragende Bauteile.' }],
+      };
+    }
+
+    // === RETTUNGSMODUS: keine Plattenlagen, aber Bauteile ===
+    const degradedMode = includedPolys.length === 0 && tragendeBeams.length > 0;
+    if (degradedMode) {
+      warnings.push({
+        level: 'error',
+        msg: `Keine verwendbaren Plattenlagen erkannt — Schattenwurf wird nur aus dem Riegelwerk-Umriss berechnet (${tragendeBeams.length} Bauteile). Die Werte sind unzuverlässig und sollten manuell geprüft werden.`,
+      });
+    }
+
+    // === WARNUNGEN: Plattenlagen-Status ===
+    if (!degradedMode) {
+      const excluded = platePolys.filter(p => p.excludedFromShadow);
+      // Reines Hinweis-Info: ausgeschlossene Lagen
+      if (excluded.length > 0) {
+        warnings.push({
+          level: 'info',
+          msg: `${excluded.length} Plattenlage(n) ausgeschlossen (Dämmung/Folien/dünne Lagen).`,
+        });
+      }
+      // Strenge Prüfung: keine PLI vorhanden?
+      const hasPLI = includedPolys.some(pp => pp.plate.type === 'PLI');
+      if (!hasPLI) {
+        warnings.push({
+          level: 'warning',
+          msg: 'Keine Innenbeplankung (PLI) erkannt — Fenster-/Türerkennung erfolgt über die nächstinnere Lage.',
+        });
+      }
+    }
+
+    // === WARNUNGEN: Bauteile auf Auffälligkeiten prüfen ===
+    let trapezoidCount = 0, anomalousBeams = 0;
+    for (const b of tragendeBeams) {
+      if (b.isTrapezoid) trapezoidCount++;
+      // Auffällig: hz <= 0 (sollte schon gefiltert sein) oder ungewöhnliche Maße
+      if (b.hz < 20) {
+        anomalousBeams++;
+      }
+    }
+    if (trapezoidCount > 0) {
+      warnings.push({
+        level: 'info',
+        msg: `${trapezoidCount} trapezförmige Bauteil(e) erkannt (Giebelwand mit Schräge).`,
+      });
+    }
+    if (anomalousBeams > 0) {
+      warnings.push({
+        level: 'warning',
+        msg: `${anomalousBeams} Bauteil(e) mit ungewöhnlich geringer Höhe (hz < 20mm).`,
+      });
+    }
+
+    // === WARNUNGEN: ELM vs. tatsächliche Bauteile ===
+    // wallRange.elm_lx (aus TXT) vs. Plattenlagen-Bbox
+    if (wallRange && wallRange.source === 'txt' && wallRange.xMax) {
+      const expectedLx = wallRange.xMax - wallRange.xMin;
+      // Es gibt evtl. ELM_lx aus den TXT-Kommentaren
+      // Vergleichbar mit der Plattenausdehnung
+    }
+
+    // === Identifiziere die Innenbeplankungs-Lage ===
+    let innerLayerNum = null, innerLayerType = null;
+    const layeredPlates = includedPolys.filter(pp => pp.plate.layer >= 1);
+    const pliPlates = layeredPlates.filter(pp => pp.plate.type === 'PLI');
+    if (pliPlates.length > 0) {
+      innerLayerNum = Math.min(...pliPlates.map(pp => pp.plate.layer));
+      innerLayerType = 'PLI';
+    } else {
+      const plaPlates = layeredPlates.filter(pp => pp.plate.type === 'PLA');
+      if (plaPlates.length > 0) {
+        innerLayerNum = Math.min(...plaPlates.map(pp => pp.plate.layer));
+        innerLayerType = 'PLA';
+      }
+    }
+    const innerPolys = innerLayerNum !== null
+      ? includedPolys.filter(pp => pp.plate.type === innerLayerType && pp.plate.layer === innerLayerNum)
+      : [];
+
+    // === Bounds (Platten + Bauteile) ===
+    let allPoints = [];
+    for (const pp of includedPolys) for (const pt of pp.polygon) allPoints.push(pt);
+    for (const b of tragendeBeams) for (const pt of b.outline) allPoints.push(pt);
+    const bounds = polygonBounds(allPoints);
+    if (!bounds) {
+      return {
+        error: 'Keine Polygonpunkte',
+        platePolys,
+        warnings: [...warnings, { level: 'error', msg: 'Keine Polygonpunkte für Berechnung verfügbar.' }],
+      };
+    }
+
+    const bboxW_mm = bounds.maxX - bounds.minX;
+    const bboxH_mm = bounds.maxY - bounds.minY;
+    const bboxM2 = (bboxW_mm * bboxH_mm) / 1e6;
+
+    // Plattenschatten
+    const plateRaster = makeRaster(bounds, settings.rasterMm);
+    for (const pp of includedPolys) fillPolygon(plateRaster, pp.polygon, 1);
+    const pxArea = settings.rasterMm * settings.rasterMm;
+    const plateOnlyM2 = countPixels(plateRaster) * pxArea / 1e6;
+
+    // Schattenwurf = Plattenschatten ∪ Bauteilschatten
+    const shadowRaster = makeRaster(bounds, settings.rasterMm);
+    for (let i = 0; i < plateRaster.data.length; i++) shadowRaster.data[i] = plateRaster.data[i];
+    for (const b of tragendeBeams) fillPolygon(shadowRaster, b.outline, 1);
+    const shadowM2 = countPixels(shadowRaster) * pxArea / 1e6;
+
+    // Beam-only zur Statistik
+    const beamRaster = makeRaster(bounds, settings.rasterMm);
+    for (const b of tragendeBeams) fillPolygon(beamRaster, b.outline, 1);
+    const beamOnlyM2 = countPixels(beamRaster) * pxArea / 1e6;
+    let beamOutsidePlatesM2 = 0;
+    for (let i = 0; i < beamRaster.data.length; i++) {
+      if (beamRaster.data[i] && !plateRaster.data[i]) beamOutsidePlatesM2++;
+    }
+    beamOutsidePlatesM2 = beamOutsidePlatesM2 * pxArea / 1e6;
+
+    // Plausibilitäts-Warnung: wenn Schattenwurf << Bbox, ist das eine Sonderform
+    const shadowVsBboxRatio = shadowM2 / bboxM2;
+    if (shadowVsBboxRatio < 0.5 && !degradedMode) {
+      warnings.push({
+        level: 'warning',
+        msg: `Schattenwurf (${shadowM2.toFixed(2)} m²) ist deutlich kleiner als Bbox (${bboxM2.toFixed(2)} m²). Möglicherweise eine Sonderform oder Lücken im Plattenwerk.`,
+      });
+    }
+
+    // Rand-Einbuchtungen + bodentiefe/deckenhohe Öffnungen aus dem Schattenwurf
+    const shadowComps = findBorderComponents(
+      shadowRaster,
+      [bounds.minX, bounds.maxX],
+      [bounds.minY, bounds.maxY],
+      {
+        maxIndentDepthMm: settings.maxIndentDepthMm || 300,
+        maxIndentAreaM2: settings.maxIndentAreaM2 || 0.25,
+      },
+      {
+        thresholdFenster: settings.thresholdFenster,
+        thresholdAbzug: settings.thresholdAbzug,
+        minSizeM2: 0.05, minEdgeMm: 100,
+      }
+    );
+    const indents = shadowComps.indents;
+    const shadowOpenings = shadowComps.openings;  // border-touch openings aus shadow
+
+    // Innenbeplankung: interne Löcher + zusätzlich border-touching Öffnungen
+    // (z.B. wenn ein OG-Riegel den Schatten oben schließt, aber die PLI-Beplankung
+    //  oben dennoch eine Aussparung hat — dann ist es eine deckenhohe Öffnung)
+    let holes = [];
+    let innerM2 = 0;
+    let innerBounds = null;
+    if (innerPolys.length > 0) {
+      let innerPts = [];
+      for (const pp of innerPolys) for (const pt of pp.polygon) innerPts.push(pt);
+      innerBounds = polygonBounds(innerPts);
+      if (innerBounds) {
+        const innerRaster = makeRaster(innerBounds, settings.rasterMm);
+        for (const pp of innerPolys) fillPolygon(innerRaster, pp.polygon, 1);
+        innerM2 = countPixels(innerRaster) * pxArea / 1e6;
+
+        // Interne Löcher (umschlossen)
+        const internalHoles = findHoles(innerRaster);
+        const internalAsHoles = internalHoles.map(h => {
+          const areaM2 = h.pixelCount * pxArea / 1e6;
+          let category;
+          if (areaM2 < settings.thresholdFenster) category = 'klein';
+          else if (areaM2 < settings.thresholdAbzug) category = 'fenster';
+          else category = 'tuer';
+          return {
+            areaM2,
+            worldW: h.worldW, worldH: h.worldH,
+            centerX: h.centerX, centerY: h.centerY,
+            category,
+            defaultAbzug: areaM2 >= settings.thresholdAbzug,
+            isBorderOpening: false,
+          };
+        });
+
+        // Border-touching Komponenten der Innenbeplankung — die mit 1 Kante = Öffnung
+        const innerComps = findBorderComponents(
+          innerRaster,
+          [innerBounds.minX, innerBounds.maxX],
+          [innerBounds.minY, innerBounds.maxY],
+          {
+            maxIndentDepthMm: settings.maxIndentDepthMm || 300,
+            maxIndentAreaM2: settings.maxIndentAreaM2 || 0.25,
+          },
+          {
+            thresholdFenster: settings.thresholdFenster,
+            thresholdAbzug: settings.thresholdAbzug,
+            minSizeM2: 0.05, minEdgeMm: 100,
+          }
+        );
+        const innerOpenings = innerComps.openings;
+
+        // Merge alle Quellen, dedupliziere räumlich
+        // (gleiche Öffnung erscheint möglicherweise in shadowOpenings und innerOpenings)
+        const merged = [...internalAsHoles];
+        const tooClose = (a, b) => {
+          // Zwei Aussparungen sind "gleich" wenn ihre Zentren < 100mm auseinander
+          // und die Flächen sich um < 30% unterscheiden
+          const dx = Math.abs(a.centerX - b.centerX);
+          const dy = Math.abs(a.centerY - b.centerY);
+          if (dx > 200 || dy > 200) return false;
+          const ratio = Math.min(a.areaM2, b.areaM2) / Math.max(a.areaM2, b.areaM2);
+          return ratio > 0.7;
+        };
+        // Innen-Openings nehmen Vorrang (genaueste Geometrie auf Innenbeplankung)
+        for (const op of innerOpenings) {
+          if (!merged.some(m => tooClose(m, op))) merged.push(op);
+        }
+        // Shadow-Openings nur als Backup, wenn nicht schon in innerOpenings/internal
+        for (const op of shadowOpenings) {
+          if (!merged.some(m => tooClose(m, op))) merged.push(op);
+        }
+        merged.sort((a, b) => b.areaM2 - a.areaM2);
+        merged.forEach((h, i) => h.idx = i);
+
+        // Pro Öffnung: ist die Fläche bereits aus dem Schattenwurf ausgespart?
+        // → wenn ja, soll sie bei Methoden B+C NICHT nochmal abgezogen werden
+        // (sonst Doppel-Abzug; Methode A bezieht sich auf Bbox, Abzug bleibt nötig)
+        annotateHolesShadowOverlap(merged, shadowRaster, pxArea);
+        holes = merged;
+      }
+    } else if (!degradedMode) {
+      warnings.push({
+        level: 'warning',
+        msg: 'Keine Innenbeplankungs-Lage verfügbar — Fenster und Türen können nicht erkannt werden.',
+      });
+      // Im degraded-Modus: shadow-openings als beste Annäherung nutzen
+      shadowOpenings.forEach((op, i) => op.idx = i);
+      annotateHolesShadowOverlap(shadowOpenings, shadowRaster, pxArea);
+      holes = shadowOpenings;
+    } else {
+      // Degraded mode mit shadow-openings
+      shadowOpenings.forEach((op, i) => op.idx = i);
+      annotateHolesShadowOverlap(shadowOpenings, shadowRaster, pxArea);
+      holes = shadowOpenings;
+    }
+
+    return {
+      platePolys,
+      innerPolys,
+      innerLayerName: innerLayerNum !== null ? `${innerLayerType}${innerLayerNum}` : null,
+      tragendeBeams,
+      bounds,
+      innerBounds,
+      bboxM2,
+      bboxW_mm,
+      bboxH_mm,
+      plateOnlyM2,
+      beamOnlyM2,
+      beamOutsidePlatesM2,
+      shadowM2,
+      innerM2,
+      holes,
+      indents,
+      warnings,
+      degradedMode,
+    };
+  }
+
+  // ============================================================
+  //  FILE READING
+  // ============================================================
+  function readFileText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+
+      // First, sniff for UTF-16 BOM
+      const sniff = new FileReader();
+      sniff.onload = () => {
+        const buf = new Uint8Array(sniff.result.slice(0, 4));
+        let encoding = 'windows-1252';  // default für deutsche Texte ohne BOM
+        if (buf[0] === 0xFF && buf[1] === 0xFE) encoding = 'utf-16le';
+        else if (buf[0] === 0xFE && buf[1] === 0xFF) encoding = 'utf-16be';
+        else if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) encoding = 'utf-8';
+        else {
+          // Heuristik: schaue nach Null-Bytes (UTF-16-Indikator)
+          let nullCount = 0;
+          for (let i = 0; i < Math.min(buf.length, 4); i++) if (buf[i] === 0) nullCount++;
+          if (nullCount >= 1) encoding = 'utf-16le';
+        }
+        reader.onload = () => resolve(reader.result);
+        reader.readAsText(file, encoding);
+      };
+      sniff.onerror = () => reject(sniff.error);
+      sniff.readAsArrayBuffer(file.slice(0, 4));
+    });
+  }
+
+  // ============================================================
+  //  RENDERING
+  // ============================================================
+
+  function fmtMm(mm) {
+    if (mm === undefined || mm === null) return '–';
+    return mm.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+  function fmtM2(m2) {
+    if (m2 === undefined || m2 === null) return '–';
+    return m2.toFixed(3).replace('.', ',');
+  }
+
+  function categoryBadge(cat) {
+    const map = { tuer: 'Fenster/Tür', fenster: 'Fenster', klein: 'klein' };
+    return `<span class="badge ${cat}">${map[cat] || cat}</span>`;
+  }
+
+  function isHoleAbzug(fileIdx, wallIdx, hole) {
+    const key = `${fileIdx}_${wallIdx}_${hole.idx}`;
+    if (state.abzugOverrides.hasOwnProperty(key)) return state.abzugOverrides[key];
+    return hole.defaultAbzug;
+  }
+
+  // Wand gelöscht / wiederherstellbar
+  function isWallDeleted(fileIdx, wallIdx) {
+    return !!state.deletedWalls[`${fileIdx}_${wallIdx}`];
+  }
+  function setWallDeleted(fileIdx, wallIdx, deleted) {
+    const key = `${fileIdx}_${wallIdx}`;
+    if (deleted) state.deletedWalls[key] = true;
+    else delete state.deletedWalls[key];
+  }
+
+  // Indent-Helpers
+  function isIndentFilled(fileIdx, wallIdx, indent) {
+    const key = `${fileIdx}_${wallIdx}_${indent.idx}`;
+    if (state.indentOverrides.hasOwnProperty(key)) return state.indentOverrides[key];
+    return indent.defaultFill;
+  }
+  function indentFillButton(fileIdx, wallIdx, idx, isOn) {
+    return `<button class="abzug-toggle ${isOn ? 'on' : ''}" data-indent-file="${fileIdx}" data-indent-wall="${wallIdx}" data-indent-idx="${idx}">${isOn ? 'als Eckverbindung' : 'nicht aufgefüllt'}</button>`;
+  }
+  function abzugButton(fileIdx, wallIdx, holeIdx, isOn) {
+    return `<button class="abzug-toggle ${isOn ? 'on' : ''}" data-file="${fileIdx}" data-wall="${wallIdx}" data-hole="${holeIdx}">${isOn ? 'wird abgezogen' : 'nicht abziehen'}</button>`;
+  }
+  function edgesText(edges) {
+    const m = { L: 'links', R: 'rechts', U: 'unten', O: 'oben' };
+    return edges.map(e => m[e] || e).join(', ');
+  }
+
+  // Berechne Variante-B (Schattenwurf + ausgewählte Eckverbindungs-Schlitze)
+  function calcVarianteB(fIdx, wIdx, analysis) {
+    if (!analysis.indents) return analysis.shadowM2;
+    let extra = 0;
+    for (const ind of analysis.indents) {
+      if (isIndentFilled(fIdx, wIdx, ind)) extra += ind.areaM2;
+    }
+    return analysis.shadowM2 + extra;
+  }
+
+  // Liefert den Abzug-Betrag in m² je nach Methode.
+  // - Methode A (Bbox): alle aktiven Öffnungen abziehen (User-Button entscheidet allein)
+  // - Methode B (Var. B): nur abziehen wenn Button aktiv UND Loch nicht bereits im Schatten
+  //   ausgespart. Bei bereits ausgesparten Öffnungen wird der Brutto-Wert in methodBruttoM2
+  //   stattdessen angepasst (siehe dort).
+  // - Methode C (Schatten): bleibt intelligent — nur abziehen wenn nicht bereits ausgespart
+  //   (verhindert Doppel-Abzug, User-Button ist bei ausgesparten wirkungslos)
+  function methodAbzugM2(fIdx, wIdx, w, method) {
+    let total = 0;
+    for (const h of (w.holes || [])) {
+      if (!isHoleAbzug(fIdx, wIdx, h)) continue;
+      if (method !== 'bbox' && h.alreadyExcludedFromShadow) {
+        // Bei Methode B/C bei bereits ausgesparten Löchern: nicht abziehen
+        // (Endergebnis wird über methodBruttoM2 korrekt erreicht: Brutto = Schatten,
+        // also Netto = Schatten unabhängig vom Button. Bei B wird der Brutto angepasst
+        // wenn das Loch übermessen sein soll.)
+        continue;
+      }
+      total += h.areaM2;
+    }
+    return total;
+  }
+
+  // Methoden-Metadaten
+  const METHOD_META = {
+    bbox:   { letter: 'A', short: 'Bbox',        label: 'Bbox (Längsmaß × Höhe)' },
+    varB:   { letter: 'B', short: 'Var. B',      label: 'Schatten + Eckverbindungen' },
+    shadow: { letter: 'C', short: 'Schattenwurf', label: 'Schattenwurf' },
+  };
+
+  // Liefert Brutto-Wert der gewählten Methode für eine Wand.
+  // Variante B: Schatten + aufgefüllte Eckverbindungen + bereits-ausgesparte Öffnungen
+  //   die übermessen werden sollen (Button inaktiv = "nicht abziehen" = übermessen).
+  //   Damit ergibt der Klick auf "abziehen" bei ausgesparten Löchern keinen Doppel-Abzug,
+  //   und der Klick auf "nicht abziehen" addiert die Lochfläche zur Wand zurück.
+  function methodBruttoM2(fIdx, wIdx, w, method) {
+    if (method === 'bbox') return w.bboxM2;
+    if (method === 'varB') {
+      let brutto = calcVarianteB(fIdx, wIdx, w);
+      // Übermessen-Korrektur: bereits ausgesparte Öffnungen die NICHT abgezogen werden sollen,
+      // werden zum Schatten dazugezählt (sie sollen in der Wandfläche enthalten sein).
+      for (const h of (w.holes || [])) {
+        if (h.alreadyExcludedFromShadow && !isHoleAbzug(fIdx, wIdx, h)) {
+          brutto += h.areaM2;
+        }
+      }
+      return brutto;
+    }
+    return w.shadowM2;
+  }
+
+  // Methoden-spezifischer Formel-Hinweis
+  function methodFormula(fIdx, wIdx, w, method) {
+    if (method === 'bbox') {
+      return `${fmtMm(w.bboxW_mm)} × ${fmtMm(w.bboxH_mm)} mm`;
+    }
+    if (method === 'varB') {
+      const ind = (w.indents || []);
+      const filled = ind.filter(i => isIndentFilled(fIdx, wIdx, i));
+      const filledM2 = filled.reduce((s, i) => s + i.areaM2, 0);
+      // Aufaddierte übermessene Öffnungen
+      let overflowM2 = 0, overflowCnt = 0;
+      for (const h of (w.holes || [])) {
+        if (h.alreadyExcludedFromShadow && !isHoleAbzug(fIdx, wIdx, h)) {
+          overflowM2 += h.areaM2;
+          overflowCnt++;
+        }
+      }
+      let s = `${fmtM2(w.shadowM2)} m² Schatten + ${fmtM2(filledM2)} m² Eckverb. (${filled.length}/${ind.length} aufgefüllt)`;
+      if (overflowCnt > 0) {
+        s += ` + ${fmtM2(overflowM2)} m² übermessene Öffnung${overflowCnt > 1 ? 'en' : ''} (${overflowCnt})`;
+      }
+      return s;
+    }
+    return 'Platten ∪ Riegelwerk';
+  }
+
+  function renderResults() {
+    const container = document.getElementById('resultsContainer');
+    if (state.files.length === 0) {
+      container.innerHTML = '<div class="empty-state">Keine Dateien geladen.</div>';
+      document.getElementById('totalContainer').style.display = 'none';
+      document.getElementById('exportPanel').style.display = 'none';
+      return;
+    }
+
+    const method = state.displayMethod || 'varB';
+    const meta = METHOD_META[method];
+
+    let html = '';
+    state.files.forEach((file, fIdx) => {
+      const a = file.analysis;
+      const p = file.parsed;
+      const hdr = p.header;
+      const versionStr = hdr.VERSION || '–';
+      const elnStr = hdr.ELN || file.name;
+      const elbStr = hdr.ELB || '–';
+      const elaStr = hdr.ELA || '–';
+
+      if (a.error) {
+        html += `
+          <div class="file-card has-errors">
+            <div class="file-card-header">
+              <div class="header-main">
+                <h3>${file.name}</h3>
+                <div class="meta error">FEHLER: ${a.error}</div>
+              </div>
+              <span class="toggle"></span>
+            </div>
+            <div class="file-card-body">
+              <div class="error">Datei konnte nicht analysiert werden: ${a.error}</div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Jede Wand wird zu einer eigenen Top-Level-Card (Multiwand-Auflösung).
+      const walls = a.walls || [a];
+      const isMulti = !!a.isMultiWall;
+      walls.forEach((w, wIdx) => {
+        if (isWallDeleted(fIdx, wIdx)) return;
+        if (w.error) {
+          html += `
+            <div class="file-card has-errors" data-fidx="${fIdx}" data-widx="${wIdx}">
+              <div class="file-card-header">
+                <div class="header-main">
+                  <h3>${(w.range && w.range.name) || elnStr}${isMulti ? ' <span class="multiwall-badge">Multiwand</span>' : ''}</h3>
+                  <div class="meta error">FEHLER: ${w.error}</div>
+                </div>
+                <button class="delete-btn" data-delete-file="${fIdx}" data-delete-wall="${wIdx}" title="Wand entfernen">×</button>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const brutto = methodBruttoM2(fIdx, wIdx, w, method);
+        const abzug = methodAbzugM2(fIdx, wIdx, w, method);
+        const netto = brutto - abzug;
+        const eln = (w.range && w.range.eln) || elnStr;
+        const znr = (w.range && w.range.znr) || hdr.ZNR;
+        const txt = p.txt || {};
+        const multiInfo = isMulti
+          ? `<span class="multiwall-badge" title="Diese Wand stammt aus einer Multiwand-Datei (${a.wallCount} Wände in ${file.name})">Teil von ${elnStr} · Multiwand</span>`
+          : '';
+        const cardCls = 'file-card' + warningSeverityClass(w);
+
+        const metaParts = [
+          file.name,
+          txt.bauvorhaben || txt.project || null,
+          isMulti ? null : elbStr,
+          isMulti ? null : elaStr,
+          isMulti ? `Wand ${wIdx+1}/${a.wallCount}` : null,
+          (w.range && w.range.elb && isMulti) ? w.range.elb : null,
+          `WUP v${versionStr}`,
+        ].filter(Boolean).join(' · ');
+
+        html += `
+          <div class="${cardCls}" data-fidx="${fIdx}" data-widx="${wIdx}">
+            <div class="file-card-header">
+              <div class="header-main">
+                <h3>${eln}${znr && znr !== eln ? ` <span class="znr-badge" title="Original-Zeichnungs-Nr">ZNR ${znr}</span>` : ''}${multiInfo ? ' ' + multiInfo : ''}</h3>
+                <div class="meta">${metaParts}</div>
+              </div>
+              <div class="header-values">
+                <span><span class="v-label">brutto</span><span class="v-brutto">${fmtM2(brutto)} m²</span></span>
+                <span><span class="v-label">${meta.letter} netto</span><span class="v-netto">${fmtM2(netto)} m²</span></span>
+              </div>
+              <span class="toggle"></span>
+              <button class="delete-btn" data-delete-file="${fIdx}" data-delete-wall="${wIdx}" title="Wand entfernen">×</button>
+            </div>
+            <div class="file-card-body">
+              ${renderWallContent(fIdx, wIdx, w, hdr)}
+            </div>
+          </div>
+        `;
+      });
+    });
+
+    container.innerHTML = html;
+    attachEventHandlers();
+    restoreUiState();
+    renderTotal();
+    renderDeletedWallsPanel();
+  }
+
+  // Hilfs-Klasse für Card-Akzentstrich basierend auf Warnungs-Schweregrad
+  function warningSeverityClass(w) {
+    if (!w || !w.warnings || w.warnings.length === 0) return '';
+    const hasError = w.warnings.some(x => x.level === 'error');
+    if (hasError) return ' has-errors';
+    const hasWarn = w.warnings.some(x => x.level === 'warning');
+    if (hasWarn) return ' has-warnings';
+    return '';
+  }
+
+  // Wand-Card im Multiwand-Container (mit eigenem Header und collapsible)
+  function renderWallCard(fIdx, wIdx, w, hdr, isInsideMulti) {
+    const wr = w.range || {};
+    const wallName = wr.name || `Wand ${wIdx+1}`;
+    const wallMeta = [
+      wr.elb ? wr.elb : null,
+      wr.znr && wr.znr !== wr.eln ? `ZNR: ${wr.znr}` : null,
+      wr.xMin !== undefined ? `x: ${fmtMm(wr.xMin)}–${fmtMm(wr.xMax)} mm` : null,
+    ].filter(Boolean).join(' · ');
+
+    if (w.error) {
+      return `
+        <div class="wall-card has-errors" data-fidx="${fIdx}" data-widx="${wIdx}">
+          <div class="wall-card-header" data-wall-toggle="${fIdx}-${wIdx}">
+            <div>
+              <h4>${wallName}</h4>
+              <div class="meta error">FEHLER: ${w.error}</div>
+            </div>
+            <span class="toggle"></span>
+          </div>
+        </div>
+      `;
+    }
+
+    const cardCls = 'wall-card' + warningSeverityClass(w);
+    return `
+      <div class="${cardCls}" data-fidx="${fIdx}" data-widx="${wIdx}">
+        <div class="wall-card-header" data-wall-toggle="${fIdx}-${wIdx}">
+          <div>
+            <h4>${wallName}</h4>
+            <div class="meta">${wallMeta}</div>
+          </div>
+          <span class="toggle"></span>
+        </div>
+        <div class="wall-card-body">
+          ${renderWallContent(fIdx, wIdx, w, hdr)}
+        </div>
+      </div>
+    `;
+  }
+
+  // Inhalt einer Wand-Analyse: Tabs mit Übersicht / Öffnungen / etc.
+  // Wird sowohl bei Einzelwand (direkt in file-card) als auch in Multiwand (in wall-card) verwendet.
+  function renderWallContent(fIdx, wIdx, w, hdr) {
+    const tabPrefix = `f${fIdx}w${wIdx}`;
+
+    // Berechnungen
+    let totalAbzugM2 = 0, countFenster = 0, countTuer = 0, countKlein = 0, countAbzug = 0;
+    (w.holes || []).forEach(h => {
+      if (h.category === 'fenster') countFenster++;
+      else if (h.category === 'tuer') countTuer++;
+      else countKlein++;
+      if (isHoleAbzug(fIdx, wIdx, h)) {
+        totalAbzugM2 += h.areaM2;
+        countAbzug++;
+      }
+    });
+    const m_bbox = w.bboxM2;
+    const m_shadow = w.shadowM2;
+    const m_varB = calcVarianteB(fIdx, wIdx, w);
+    const net_bbox = m_bbox - totalAbzugM2;
+    const net_shadow = m_shadow - totalAbzugM2;
+    const net_varB = m_varB - totalAbzugM2;
+
+    const indentCount = (w.indents || []).length;
+    const indentFilledCount = (w.indents || []).filter(i => isIndentFilled(fIdx, wIdx, i)).length;
+    const indentFilledM2 = (w.indents || []).reduce((s, i) => s + (isIndentFilled(fIdx, wIdx, i) ? i.areaM2 : 0), 0);
+
+    // Warnungen rendern
+    const warnings = w.warnings || [];
+    const warningsHtml = warnings.length > 0 ? `
+      <div class="warnings-block">
+        ${warnings.map(wn => {
+          const icon = wn.level === 'error' ? '✕' : (wn.level === 'warning' ? '⚠' : 'i');
+          return `<div class="warning-banner ${wn.level}"><span class="warning-icon">${icon}</span><span>${wn.msg}</span></div>`;
+        }).join('')}
+      </div>
+    ` : '';
+
+    return `
+      <div class="wall-split" data-fidx="${fIdx}" data-widx="${wIdx}">
+        <div class="wall-pane wall-pane-left">
+          <div class="tabs">
+            <div class="tab active" data-tab="summary-${tabPrefix}">Übersicht${warnings.length > 0 ? ' <span style="opacity:0.7;font-size:10px;">(' + warnings.length + ')</span>' : ''}</div>
+            <div class="tab" data-tab="holes-${tabPrefix}">Öffnungen (${(w.holes||[]).length})</div>
+            <div class="tab" data-tab="indents-${tabPrefix}">Rand-Einbuchtungen (${indentCount})</div>
+            <div class="tab" data-tab="layers-${tabPrefix}">Lagen (${(w.platePolys||[]).length})</div>
+            <div class="tab tab-visual-only" data-tab="visual-${tabPrefix}">Visualisierung</div>
+          </div>
+
+          <div class="tab-content active" id="summary-${tabPrefix}">
+            ${warningsHtml}
+            ${(() => {
+              const method = state.displayMethod || 'varB';
+              const meta = METHOD_META[method];
+              const brutto = methodBruttoM2(fIdx, wIdx, w, method);
+              const abzug = methodAbzugM2(fIdx, wIdx, w, method);
+              const netto = brutto - abzug;
+              const formula = methodFormula(fIdx, wIdx, w, method);
+
+              // Anzahl ausgesparter Öffnungen (für Hinweis)
+              const excludedCount = (w.holes || []).filter(h => h.alreadyExcludedFromShadow && isHoleAbzug(fIdx, wIdx, h)).length;
+              const abzugHint = (method !== 'bbox' && excludedCount > 0)
+            ? ` <span style="color: var(--text-dim); font-size: 11px;">(${excludedCount} bereits im Schatten ausgespart)</span>`
+            : '';
+
+          return `
+        <div class="summary-list">
+          <div class="summary-row method-row">
+            <span class="key">${meta.letter} · ${meta.label}</span>
+            <span class="val brutto" title="Brutto">${fmtM2(brutto)} m²</span>
+            <span class="val abzug" title="Abzug Öffnungen">−${fmtM2(abzug)} m²${abzugHint}</span>
+            <span class="val netto" title="Netto-Wandfläche">${fmtM2(netto)} m²</span>
+          </div>
+          ${(() => {
+            const txt = (state.files[fIdx] && state.files[fIdx].parsed && state.files[fIdx].parsed.txt) || {};
+            const bauvorhaben = txt.bauvorhaben || txt.objekt || null;
+            const projectInfo = [
+              txt.project,
+              txt.bvKundeNr && txt.bvKundeNr !== txt.project ? txt.bvKundeNr : null,
+              txt.kunde,
+              txt.ort,
+            ].filter(Boolean).join(' · ');
+            if (!bauvorhaben && !projectInfo) return '';
+            return `
+              <div class="summary-row">
+                <span class="key">Bauvorhaben</span>
+                <span class="val" style="grid-column: 2 / span 3; text-align: left;">${bauvorhaben || '–'}${projectInfo ? `<span style="color: var(--text-dim); margin-left: 8px;">${projectInfo}</span>` : ''}</span>
+              </div>
+            `;
+          })()}
+          <div class="summary-row">
+            <span class="key">Berechnungsbasis</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left; color: var(--text-dim);">${formula}</span>
+          </div>
+          ${w.range && w.range.source !== 'single' ? `
+          <div class="summary-row">
+            <span class="key">Wandgrenzen</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left;">x = ${fmtMm(w.range.xMin)}–${fmtMm(w.range.xMax)} mm</span>
+          </div>` : `
+          <div class="summary-row">
+            <span class="key">Element-Maße (ELM)</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left;">${hdr.ELM ? fmtMm(hdr.ELM.lx) + ' × ' + fmtMm(hdr.ELM.by) + ' mm' : '–'}</span>
+          </div>`}
+          <div class="summary-row">
+            <span class="key">Öffnungen</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left;">${(w.holes||[]).length} gesamt · ${countTuer} Tür · ${countFenster} Fenster · ${countKlein} klein · ${countAbzug} im Abzug</span>
+          </div>
+          <div class="summary-row">
+            <span class="key">Rand-Einbuchtungen</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left;">${indentCount} gesamt · ${indentFilledCount} als Eckverbindung aufgefüllt (${fmtM2(indentFilledM2)} m²)</span>
+          </div>
+          <div class="summary-row">
+            <span class="key">Plattenlagen</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left;">${(w.platePolys||[]).filter(p=>!p.excludedFromShadow).length} im Schatten · ${(w.platePolys||[]).filter(p=>p.excludedFromShadow).length} ausgeschlossen · Erkennungs-Lage: ${w.innerLayerName || '–'} (${fmtM2(w.innerM2)} m²)</span>
+          </div>
+          <div class="summary-row">
+            <span class="key">Riegelwerk</span>
+            <span class="val" style="grid-column: 2 / span 3; text-align: left;">${(w.tragendeBeams||[]).length} Bauteile · ${fmtM2(w.beamOutsidePlatesM2 || 0)} m² freiliegend</span>
+          </div>
+        </div>
+        `;
+        })()}
+      </div>
+
+          <div class="tab-content" id="holes-${tabPrefix}">
+            ${renderHolesTable(fIdx, wIdx, w.holes || [])}
+          </div>
+
+          <div class="tab-content" id="indents-${tabPrefix}">
+            ${renderIndentsTable(fIdx, wIdx, w.indents || [])}
+          </div>
+
+          <div class="tab-content" id="layers-${tabPrefix}">
+            ${renderLayersTable(w.platePolys || [])}
+          </div>
+
+          <div class="tab-content" id="visual-${tabPrefix}">
+            ${renderVisualization(fIdx, wIdx, w, hdr)}
+          </div>
+        </div>
+
+        <div class="wall-pane-resizer" data-fidx="${fIdx}" data-widx="${wIdx}" title="Größe der Visualisierung anpassen"></div>
+
+        <div class="wall-pane wall-pane-right">
+          <div class="viz-pane-inner">
+            ${renderVisualization(fIdx, wIdx, w, hdr)}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderHolesTable(fIdx, wIdx, holes) {
+    if (!holes.length) {
+      return '<div class="empty-state">Keine Öffnungen erkannt.</div>';
+    }
+    const edgeNames = { L: 'links', R: 'rechts', U: 'unten', O: 'oben' };
+    let h = `<table class="holes">
+      <thead><tr>
+        <th>#</th>
+        <th>Kategorie</th>
+        <th>Typ</th>
+        <th class="num">Fläche [m²]</th>
+        <th class="num">Maße B × H [mm]</th>
+        <th class="num">Position [mm]</th>
+        <th>Abzug</th>
+      </tr></thead><tbody>`;
+    holes.forEach(hole => {
+      const isAbzug = isHoleAbzug(fIdx, wIdx, hole);
+      let typLabel;
+      if (hole.isBorderOpening) {
+        const ed = edgeNames[hole.borderEdge] || hole.borderEdge;
+        const isBodentief = hole.borderEdge === 'U';
+        const isDeckenhoch = hole.borderEdge === 'O';
+        if (isBodentief) typLabel = `<span style="color: #d29922;" title="Reicht bis zur unteren Plattenkante">bodentief (${ed})</span>`;
+        else if (isDeckenhoch) typLabel = `<span style="color: #d29922;" title="Reicht bis zur oberen Plattenkante">deckenhoch (${ed})</span>`;
+        else typLabel = `<span style="color: #d29922;" title="Reicht bis zur ${ed}en Plattenkante">randoffen (${ed})</span>`;
+      } else {
+        typLabel = '<span style="color: var(--text-dim);">intern</span>';
+      }
+      h += `<tr data-row-hole="${hole.idx}" data-row-fidx="${fIdx}" data-row-widx="${wIdx}">
+        <td>${hole.idx + 1}</td>
+        <td>${categoryBadge(hole.category)}</td>
+        <td>${typLabel}</td>
+        <td class="num">${fmtM2(hole.areaM2)}</td>
+        <td class="num">${fmtMm(hole.worldW)} × ${fmtMm(hole.worldH)}</td>
+        <td class="num">${fmtMm(hole.centerX)} | ${fmtMm(hole.centerY)}</td>
+        <td>${abzugButton(fIdx, wIdx, hole.idx, isAbzug)}</td>
+      </tr>`;
+    });
+    h += '</tbody></table>';
+    return h;
+  }
+
+  function renderIndentsTable(fIdx, wIdx, indents) {
+    if (!indents.length) {
+      return '<div class="empty-state">Keine Rand-Einbuchtungen erkannt.<br><span style="font-size:11px;">Schattenwurf entspricht der Bbox (rechteckige Wand).</span></div>';
+    }
+    let h = `
+      <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+        <b style="color: var(--text);">Was sind Rand-Einbuchtungen?</b><br>
+        Bereiche, die in der Bounding-Box liegen, aber im Schattenwurf fehlen — z.B. Eckverbindungs-Schlitze (gehören zur Anschlusswand) oder echte fehlende Wandbereiche (z.B. L-förmige Sonderwand).<br>
+        <b style="color: var(--accent);">"Auffüllen"</b> bedeutet: dieser Bereich wird in <b>Variante B</b> zur Brutto-Wandfläche dazugerechnet (= Eckverbindung, ist trotzdem zur Wand zu zählen).<br>
+        <b style="color: var(--text-dim);">"Nicht auffüllen"</b> = der Bereich gehört nicht zur abrechenbaren Fläche dieser Wand (z.B. weil dort einfach kein Material liegt).
+      </div>
+      <table class="holes">
+      <thead><tr>
+        <th>#</th>
+        <th class="num">Fläche [m²]</th>
+        <th class="num">Maße B × H [mm]</th>
+        <th>Plattenkanten</th>
+        <th class="num">Position [mm]</th>
+        <th>Variante B</th>
+      </tr></thead><tbody>`;
+    indents.forEach(ind => {
+      const isFilled = isIndentFilled(fIdx, wIdx, ind);
+      h += `<tr data-row-indent="${ind.idx}" data-row-fidx="${fIdx}" data-row-widx="${wIdx}">
+        <td>${ind.idx + 1}</td>
+        <td class="num">${fmtM2(ind.areaM2)}</td>
+        <td class="num">${fmtMm(ind.worldW)} × ${fmtMm(ind.worldH)}</td>
+        <td>${edgesText(ind.edges)}</td>
+        <td class="num">${fmtMm(ind.centerX)} | ${fmtMm(ind.centerY)}</td>
+        <td>${indentFillButton(fIdx, wIdx, ind.idx, isFilled)}</td>
+      </tr>`;
+    });
+    h += '</tbody></table>';
+    return h;
+  }
+
+  function renderLayersTable(platePolys) {
+    if (!platePolys.length) return '<div class="empty-state">Keine Plattenlagen.</div>';
+    let h = `<table class="holes">
+      <thead><tr>
+        <th>Typ</th>
+        <th>Mat-Index</th>
+        <th>Name</th>
+        <th class="num">L × B × H [mm]</th>
+        <th>Im Schatten?</th>
+      </tr></thead><tbody>`;
+    platePolys.forEach(pp => {
+      const p = pp.plate;
+      h += `<tr>
+        <td>${p.kw}</td>
+        <td>${p.materialIdx}</td>
+        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(p.name || '').replace(/[<>]/g,'')}</td>
+        <td class="num">${fmtMm(p.lx)} × ${fmtMm(p.by)} × ${fmtMm(p.hz)}</td>
+        <td>${pp.excludedFromShadow ? '<span class="warning">nein (' + pp.reason + ')</span>' : '<span class="success">ja</span>'}</td>
+      </tr>`;
+    });
+    h += '</tbody></table>';
+    return h;
+  }
+
+  function renderParserStatus(parsed) {
+    let h = '<table class="holes"><tbody>';
+    h += `<tr><td>Geparste Zeilen</td><td>${parsed.stats.parsedLines}</td></tr>`;
+    h += `<tr><td>TXT-Kommentare</td><td>${parsed.stats.txtLines}</td></tr>`;
+    h += `<tr><td>Bauteile (Holz)</td><td>${parsed.beams.length}</td></tr>`;
+    h += `<tr><td>Plattenlagen</td><td>${parsed.plates.length}</td></tr>`;
+    Object.keys(parsed.header).forEach(k => {
+      const v = parsed.header[k];
+      const vs = (typeof v === 'object') ? JSON.stringify(v) : String(v);
+      h += `<tr><td>${k}</td><td>${vs.substring(0, 100)}</td></tr>`;
+    });
+    h += '</tbody></table>';
+    if (parsed.warnings && parsed.warnings.length > 0) {
+      h += '<div class="warning" style="margin-top:10px; font-family: var(--font-mono); font-size:11px;">Warnungen: ' + parsed.warnings.join(', ') + '</div>';
+    }
+    return h;
+  }
+
+  function renderVisualization(fIdx, wIdx, a, hdr) {
+    const W = a.bounds.maxX - a.bounds.minX;
+    const H = a.bounds.maxY - a.bounds.minY;
+    if (W <= 0 || H <= 0) return '<div class="empty-state">Keine Geometriedaten.</div>';
+
+    const padding = 60;
+    const vbW = W + padding * 2;
+    const vbH = H + padding * 2;
+    const vbX = a.bounds.minX - padding;
+    const vbY = a.bounds.minY - padding;
+
+    let svg = `<svg viewBox="${vbX} ${-(vbY + vbH)} ${vbW} ${vbH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="background: var(--bg-input); max-height: 600px;">`;
+    svg += `<g transform="scale(1 -1)">`;
+
+    // 1) Bbox-Rechteck (Methode A) als pinker dünner gestrichelter Rahmen
+    svg += `<rect x="${a.bounds.minX}" y="${a.bounds.minY}" width="${W}" height="${H}" fill="none" stroke="#d4537e" stroke-width="3" stroke-dasharray="14 10" opacity="0.7"/>`;
+
+    // 2) ELM-Rechteck nur bei Einzelwand zeigen, bei Multiwand wäre es irreführend
+    const elm = hdr ? hdr.ELM : (state.files[fIdx] ? state.files[fIdx].parsed.header.ELM : null);
+    const isMulti = state.files[fIdx] && state.files[fIdx].analysis && state.files[fIdx].analysis.isMultiWall;
+    if (elm && !isMulti) {
+      svg += `<rect x="0" y="0" width="${elm.lx}" height="${elm.by}" fill="none" stroke="#444c56" stroke-width="3" stroke-dasharray="20 12"/>`;
+    }
+
+    // 3) Bauteile (Riegelwerk) — sehr dezent
+    if (a.tragendeBeams && a.tragendeBeams.length > 0) {
+      svg += `<g opacity="0.5">`;
+      for (const b of a.tragendeBeams) {
+        const pts = b.outline.map(p => `${p[0]},${p[1]}`).join(' ');
+        svg += `<polygon points="${pts}" fill="rgba(200,200,200,0.06)" stroke="rgba(180,180,180,0.45)" stroke-width="2"/>`;
+      }
+      svg += `</g>`;
+    }
+
+    // 4) Plattenlagen
+    for (const pp of a.platePolys) {
+      if (pp.excludedFromShadow) continue;
+      const isInner = a.innerPolys && a.innerPolys.indexOf(pp) !== -1;
+      const fill = isInner ? 'rgba(255, 122, 0, 0.28)' : 'rgba(88, 166, 255, 0.10)';
+      const stroke = isInner ? '#ff7a00' : 'rgba(88, 166, 255, 0.4)';
+      const sw = isInner ? 4 : 2;
+      const pts = pp.polygon.map(p => `${p[0]},${p[1]}`).join(' ');
+      svg += `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    }
+
+    // 5) Rand-Einbuchtungen — als echte Polygone
+    if (a.indents) {
+      for (const ind of a.indents) {
+        const isFilled = isIndentFilled(fIdx, wIdx, ind);
+        const color = isFilled ? 'rgba(63, 185, 80, 0.35)' : 'rgba(212, 83, 126, 0.30)';
+        const stroke = isFilled ? '#3fb950' : '#d4537e';
+        const dataAttrs = `class="viz-indent" data-viz-indent="${ind.idx}" data-viz-fidx="${fIdx}" data-viz-widx="${wIdx}"`;
+        if (ind.polygons && ind.polygons.length > 0) {
+          for (const poly of ind.polygons) {
+            const pts = poly.map(p => `${p[0]},${p[1]}`).join(' ');
+            svg += `<polygon ${dataAttrs} points="${pts}" fill="${color}" stroke="${stroke}" stroke-width="3" stroke-dasharray="6 4"/>`;
+          }
+        } else {
+          const xMin = ind.centerX - ind.worldW / 2;
+          const yMin = ind.centerY - ind.worldH / 2;
+          svg += `<rect ${dataAttrs} x="${xMin}" y="${yMin}" width="${ind.worldW}" height="${ind.worldH}" fill="${color}" stroke="${stroke}" stroke-width="3" stroke-dasharray="6 4"/>`;
+        }
+      }
+    }
+
+    // 5) Löcher (Öffnungen) — überlagern alles andere
+    for (const hole of a.holes) {
+      let color, strokeColor;
+      if (hole.category === 'tuer') { color = 'rgba(248,81,73,0.55)'; strokeColor = '#f85149'; }
+      else if (hole.category === 'fenster') { color = 'rgba(210,153,34,0.55)'; strokeColor = '#d29922'; }
+      else { color = 'rgba(139,148,158,0.45)'; strokeColor = '#8b949e'; }
+      const dataAttrs = `class="viz-hole" data-viz-hole="${hole.idx}" data-viz-fidx="${fIdx}" data-viz-widx="${wIdx}"`;
+      // Border-Openings haben eine echte Polygon-Outline, interne Holes nur Bbox
+      if (hole.isBorderOpening && hole.polygons && hole.polygons.length > 0) {
+        for (const poly of hole.polygons) {
+          const pts = poly.map(p => `${p[0]},${p[1]}`).join(' ');
+          svg += `<polygon ${dataAttrs} points="${pts}" fill="${color}" stroke="${strokeColor}" stroke-width="6"/>`;
+        }
+      } else {
+        const xMin = hole.centerX - hole.worldW / 2;
+        const yMin = hole.centerY - hole.worldH / 2;
+        svg += `<rect ${dataAttrs} x="${xMin}" y="${yMin}" width="${hole.worldW}" height="${hole.worldH}" fill="${color}" stroke="${strokeColor}" stroke-width="6"/>`;
+      }
+    }
+
+    svg += `</g>`;
+
+    // 6) Loch-Nummern
+    for (const hole of a.holes) {
+      const cx = hole.centerX;
+      const cy = -hole.centerY;
+      const fontSize = Math.min(120, Math.max(40, Math.min(hole.worldW, hole.worldH) * 0.35));
+      svg += `<text x="${cx}" y="${cy}" fill="#fff" font-family="ui-monospace, monospace" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central" font-weight="700" stroke="#000" stroke-width="${fontSize * 0.05}" paint-order="stroke">${hole.idx + 1}</text>`;
+    }
+    // 7) Eckschlitz-Nummern (kleinere Schrift, mit "E" Präfix)
+    if (a.indents) {
+      for (const ind of a.indents) {
+        const cx = ind.centerX;
+        const cy = -ind.centerY;
+        const fontSize = Math.min(70, Math.max(28, Math.min(ind.worldW, ind.worldH) * 0.5));
+        svg += `<text x="${cx}" y="${cy}" fill="#fff" font-family="ui-monospace, monospace" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central" font-weight="700" stroke="#000" stroke-width="${fontSize * 0.05}" paint-order="stroke">E${ind.idx + 1}</text>`;
+      }
+    }
+
+    svg += `</svg>`;
+
+    return `<div class="svg-wrap">${svg}
+      <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(200,200,200,0.06); border: 1px solid rgba(180,180,180,0.45);"></div>Riegelwerk</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(255,122,0,0.28); border: 2px solid #ff7a00;"></div>Innenbeplankung</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(88,166,255,0.10); border: 1px solid rgba(88,166,255,0.4);"></div>weitere Lagen</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(248,81,73,0.5); border: 2px solid #f85149;"></div>Tür</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(210,153,34,0.5); border: 2px solid #d29922;"></div>Fenster</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(139,148,158,0.4); border: 2px solid #8b949e;"></div>klein</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(63,185,80,0.35); border: 2px dashed #3fb950;"></div>Eckverb. aufgefüllt</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: rgba(212,83,126,0.30); border: 2px dashed #d4537e;"></div>nicht aufgefüllt</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: transparent; border: 2px dashed #d4537e;"></div>Bbox</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: transparent; border: 2px dashed #444c56;"></div>ELM</div>
+      </div>
+    </div>`;
+  }
+
+  // Panel mit gelöschten Wänden (per Klick wiederherstellbar)
+  function renderDeletedWallsPanel() {
+    const keys = Object.keys(state.deletedWalls).filter(k => state.deletedWalls[k]);
+    const container = document.getElementById('resultsContainer');
+    let panel = document.getElementById('deletedWallsPanel');
+    if (keys.length === 0) {
+      if (panel) panel.remove();
+      return;
+    }
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'deletedWallsPanel';
+      panel.className = 'deleted-walls-panel';
+      container.parentNode.insertBefore(panel, container);
+    }
+    let inner = `<div class="header">${keys.length} ${keys.length === 1 ? 'gelöschte Wand' : 'gelöschte Wände'}</div>`;
+    for (const k of keys) {
+      const [fIdx, wIdx] = k.split('_').map(s => parseInt(s, 10));
+      const file = state.files[fIdx];
+      if (!file || file.analysis.error) continue;
+      const walls = file.analysis.walls || [file.analysis];
+      const w = walls[wIdx];
+      if (!w) continue;
+      const wallName = (w.range && w.range.name) || file.parsed.header.ELN || file.name;
+      const isMulti = !!file.analysis.isMultiWall;
+      const label = isMulti ? `${wallName} (Wand ${wIdx+1}/${file.analysis.wallCount})` : wallName;
+      inner += `<span class="item">${label}<button class="restore-btn" data-restore-file="${fIdx}" data-restore-wall="${wIdx}">wiederherstellen</button></span>`;
+    }
+    panel.innerHTML = inner;
+
+    // Restore-Handler
+    panel.querySelectorAll('.restore-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const fIdx = parseInt(btn.dataset.restoreFile, 10);
+        const wIdx = parseInt(btn.dataset.restoreWall, 10);
+        setWallDeleted(fIdx, wIdx, false);
+        renderResults();
+      });
+    });
+  }
+
+  function renderTotal() {
+    if (state.files.length === 0) {
+      const sf = document.getElementById('stickyFooter');
+      if (sf) sf.style.display = 'none';
+      return;
+    }
+    const method = state.displayMethod || 'varB';
+    const meta = METHOD_META[method];
+
+    let totalBrutto = 0, totalAbzug = 0;
+    let allFenster = 0, allTuer = 0, allKlein = 0;
+    let totalEckverbFilled = 0, totalEckverbCount = 0;
+    let totalWalls = 0, totalMultiwalls = 0, deletedWallCount = 0;
+    state.files.forEach((file, fIdx) => {
+      const a = file.analysis;
+      if (a.error) return;
+      const walls = a.walls || [a];
+      if (a.isMultiWall) totalMultiwalls++;
+      walls.forEach((w, wIdx) => {
+        if (w.error) return;
+        if (isWallDeleted(fIdx, wIdx)) { deletedWallCount++; return; }
+        totalWalls++;
+        totalBrutto += methodBruttoM2(fIdx, wIdx, w, method);
+        totalAbzug += methodAbzugM2(fIdx, wIdx, w, method);
+        (w.holes || []).forEach(h => {
+          if (h.category === 'fenster') allFenster++;
+          else if (h.category === 'tuer') allTuer++;
+          else allKlein++;
+        });
+        if (w.indents) {
+          totalEckverbCount += w.indents.length;
+          for (const ind of w.indents) if (isIndentFilled(fIdx, wIdx, ind)) totalEckverbFilled++;
+        }
+      });
+    });
+    const totalNetto = totalBrutto - totalAbzug;
+
+    const totalContainer = document.getElementById('totalContainer');
+    totalContainer.style.display = 'block';
+    const baseSummary = totalMultiwalls > 0
+      ? `${state.files.length} Datei(en) · ${totalWalls} Wand-Element(e) (davon ${totalMultiwalls} Multiwand)`
+      : `${state.files.length} Datei(en)${totalWalls !== state.files.length ? ' · ' + totalWalls + ' Wände' : ''}`;
+    const wallSummary = deletedWallCount > 0
+      ? `${baseSummary} · ${deletedWallCount} gelöscht (nicht in Σ)`
+      : baseSummary;
+    totalContainer.innerHTML = `
+      <div class="panel total-panel">
+        <div class="panel-header"><span>Gesamtsumme · ${wallSummary}</span></div>
+        <div class="panel-body">
+          <div class="summary-list">
+            <div class="summary-row method-row">
+              <span class="key">Σ ${meta.letter} · ${meta.label}</span>
+              <span class="val brutto">${fmtM2(totalBrutto)} m²</span>
+              <span class="val abzug">−${fmtM2(totalAbzug)} m²</span>
+              <span class="val netto">${fmtM2(totalNetto)} m²</span>
+            </div>
+            <div class="summary-row">
+              <span class="key">Σ Öffnungen</span>
+              <span class="val" style="grid-column: 2 / span 3; text-align: left;">${allTuer} Tür · ${allFenster} Fenster · ${allKlein} klein</span>
+            </div>
+            <div class="summary-row">
+              <span class="key">Σ Rand-Einbuchtungen</span>
+              <span class="val" style="grid-column: 2 / span 3; text-align: left;">${totalEckverbCount} gesamt · ${totalEckverbFilled} als Eckverbindung aufgefüllt</span>
+            </div>
+            <div class="summary-row">
+              <span class="key">Dateien-Status</span>
+              <span class="val" style="grid-column: 2 / span 3; text-align: left;">${state.files.filter(f => !f.analysis.error).length} / ${state.files.length} OK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('exportPanel').style.display = 'block';
+
+    // Sticky Footer
+    const sf = document.getElementById('stickyFooter');
+    if (sf) {
+      sf.style.display = 'flex';
+      sf.innerHTML = `
+        <span class="sf-method">Σ ${meta.letter} · ${meta.short}</span>
+        <span class="sf-value">${fmtM2(totalNetto)} m²</span>
+        <span class="sf-divider"></span>
+        <span class="sf-meta">${totalWalls} ${totalWalls === 1 ? 'Wand' : 'Wände'} · brutto ${fmtM2(totalBrutto)} m² − Abzug ${fmtM2(totalAbzug)} m²</span>
+      `;
+    }
+  }
+
+  // ============================================================
+  //  EVENT HANDLERS — mit State-Persistierung & gezielten Updates
+  // ============================================================
+  // Event-Handler werden EINMAL pro DOM-Element gebunden (Idempotent über delegateBound-Flag).
+  // Über Event Delegation: alle Klicks gehen über den resultsContainer, was robust gegen
+  // Re-Rendern einzelner Wand-Cards ist.
+  function attachEventHandlers() {
+    const container = document.getElementById('resultsContainer');
+    if (!container || container.dataset.delegated === '1') return;
+    container.dataset.delegated = '1';
+
+    container.addEventListener('click', e => {
+      const target = e.target;
+
+      // Tab-Click
+      const tab = target.closest('.tab');
+      if (tab && container.contains(tab)) {
+        const scope = tab.closest('.wall-pane-left') || tab.closest('.file-card-body');
+        if (!scope) return;
+        const tabsEl = tab.parentElement;
+        tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        scope.querySelectorAll(':scope > .tab-content').forEach(t => t.classList.remove('active'));
+        const dst = scope.querySelector(':scope > #' + tab.dataset.tab);
+        if (dst) dst.classList.add('active');
+        // State persistieren
+        const card = scope.closest('.file-card');
+        if (card) {
+          const fIdx = card.dataset.fidx, wIdx = card.dataset.widx;
+          if (fIdx !== undefined && wIdx !== undefined) {
+            const k = `${fIdx}_${wIdx}`;
+            state.wallUiState[k] = state.wallUiState[k] || {};
+            state.wallUiState[k].activeTab = tab.dataset.tab;
+          }
+        }
+        return;
+      }
+
+      // Delete-Button
+      const delBtn = target.closest('.delete-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        const fIdx = parseInt(delBtn.dataset.deleteFile, 10);
+        const wIdx = parseInt(delBtn.dataset.deleteWall, 10);
+        setWallDeleted(fIdx, wIdx, true);
+        renderResults();
+        return;
+      }
+
+      // Abzug/Indent-Toggle
+      const abzugBtn = target.closest('.abzug-toggle');
+      if (abzugBtn) {
+        e.stopPropagation();
+        if (abzugBtn.dataset.indentFile !== undefined) {
+          const fIdx = parseInt(abzugBtn.dataset.indentFile, 10);
+          const wIdx = parseInt(abzugBtn.dataset.indentWall, 10);
+          const iIdx = parseInt(abzugBtn.dataset.indentIdx, 10);
+          const file = state.files[fIdx];
+          const wall = file.analysis.walls ? file.analysis.walls[wIdx] : file.analysis;
+          if (!wall || !wall.indents) return;
+          const ind = wall.indents.find(x => x.idx === iIdx);
+          if (!ind) return;
+          state.indentOverrides[`${fIdx}_${wIdx}_${iIdx}`] = !isIndentFilled(fIdx, wIdx, ind);
+          updateWallCard(fIdx, wIdx);
+          renderTotal();
+          return;
+        }
+        const fIdx = parseInt(abzugBtn.dataset.file, 10);
+        const wIdx = parseInt(abzugBtn.dataset.wall, 10);
+        const hIdx = parseInt(abzugBtn.dataset.hole, 10);
+        const file = state.files[fIdx];
+        const wall = file.analysis.walls ? file.analysis.walls[wIdx] : file.analysis;
+        if (!wall || !wall.holes) return;
+        const hole = wall.holes.find(h => h.idx === hIdx);
+        if (!hole) return;
+        state.abzugOverrides[`${fIdx}_${wIdx}_${hIdx}`] = !isHoleAbzug(fIdx, wIdx, hole);
+        updateWallCard(fIdx, wIdx);
+        renderTotal();
+        return;
+      }
+
+      // Visualisierungs-Klick (Loch oder Einbuchtung) → Tab-Sprung + Scroll + Highlight
+      const vizEl = target.closest('.viz-hole, .viz-indent');
+      if (vizEl) {
+        e.stopPropagation();
+        const fIdx = vizEl.dataset.vizFidx;
+        const wIdx = vizEl.dataset.vizWidx;
+        const isHole = vizEl.classList.contains('viz-hole');
+        const idx = isHole ? vizEl.dataset.vizHole : vizEl.dataset.vizIndent;
+        const card = document.querySelector(`.file-card[data-fidx="${fIdx}"][data-widx="${wIdx}"]`);
+        if (!card) return;
+        // Card aufklappen falls eingeklappt
+        if (card.classList.contains('collapsed')) {
+          card.classList.remove('collapsed');
+          const k = `${fIdx}_${wIdx}`;
+          state.wallUiState[k] = state.wallUiState[k] || {};
+          state.wallUiState[k].collapsed = false;
+        }
+        // Ziel-Tab finden (in der linken Pane)
+        const tabPrefix = isHole ? 'holes' : 'indents';
+        const targetTabId = `${tabPrefix}-f${fIdx}w${wIdx}`;
+        const paneLeft = card.querySelector('.wall-pane-left') || card.querySelector('.file-card-body');
+        const tab = paneLeft.querySelector(`.tab[data-tab="${targetTabId}"]`);
+        const content = paneLeft.querySelector('#' + targetTabId);
+        if (tab && content) {
+          const tabsEl = tab.parentElement;
+          tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          paneLeft.querySelectorAll(':scope > .tab-content').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          content.classList.add('active');
+          const k = `${fIdx}_${wIdx}`;
+          state.wallUiState[k] = state.wallUiState[k] || {};
+          state.wallUiState[k].activeTab = targetTabId;
+        }
+        // Ziel-Zeile finden & highlighten + scrollen
+        const rowAttr = isHole ? 'data-row-hole' : 'data-row-indent';
+        const row = content && content.querySelector(`tr[${rowAttr}="${idx}"][data-row-fidx="${fIdx}"][data-row-widx="${wIdx}"]`);
+        if (row) {
+          // Vorherige Highlights entfernen (in dieser Card)
+          card.querySelectorAll('tr.row-highlight').forEach(r => r.classList.remove('row-highlight'));
+          // Smooth scrollen — nur wenn API verfügbar (testumgebungs-resilient)
+          if (typeof row.scrollIntoView === 'function') {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          // Highlight neu setzen (kurzes timeout damit die Animation neu startet wenn dasselbe Element doppelt geklickt wird)
+          requestAnimationFrame(() => row.classList.add('row-highlight'));
+          // Animation-Klasse nach Ablauf entfernen, damit erneuter Klick neu animiert
+          setTimeout(() => row.classList.remove('row-highlight'), 1700);
+        }
+        return;
+      }
+
+      // Header-Klick (Card auf-/zuklappen) — nur wenn nicht auf Button geklickt
+      const header = target.closest('.file-card-header');
+      if (header && !target.closest('button')) {
+        const card = header.closest('.file-card');
+        const fIdx = card.dataset.fidx, wIdx = card.dataset.widx;
+        if (fIdx === undefined || wIdx === undefined) return;
+        card.classList.toggle('collapsed');
+        const k = `${fIdx}_${wIdx}`;
+        state.wallUiState[k] = state.wallUiState[k] || {};
+        state.wallUiState[k].collapsed = card.classList.contains('collapsed');
+        return;
+      }
+    });
+
+    // Resizer-Drag — separate mousedown-Listener, mousemove/mouseup global
+    container.addEventListener('mousedown', e => {
+      const resizer = e.target.closest('.wall-pane-resizer');
+      if (!resizer) return;
+      e.preventDefault();
+      const card = resizer.closest('.file-card');
+      const split = card.querySelector('.wall-split');
+      if (!split) return;
+      resizer.classList.add('dragging');
+      const fIdx = card.dataset.fidx, wIdx = card.dataset.widx;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      const onMove = me => {
+        const rect = split.getBoundingClientRect();
+        const x = me.clientX - rect.left;
+        let ratio = x / rect.width;
+        ratio = Math.max(0.2, Math.min(0.8, ratio));
+        applySplitRatio(card, ratio);
+        const k = `${fIdx}_${wIdx}`;
+        state.wallUiState[k] = state.wallUiState[k] || {};
+        state.wallUiState[k].splitRatio = ratio;
+      };
+      const onUp = () => {
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ===== Hover-Tooltip für Visualisierungs-Elemente =====
+    // Ein einziger Tooltip-DIV der wiederverwendet wird
+    let tooltipEl = document.getElementById('vizTooltip');
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.id = 'vizTooltip';
+      tooltipEl.className = 'viz-tooltip';
+      tooltipEl.style.display = 'none';
+      document.body.appendChild(tooltipEl);
+    }
+
+    container.addEventListener('pointerover', e => {
+      const vizEl = e.target.closest('.viz-hole, .viz-indent');
+      if (!vizEl) return;
+      const fIdx = parseInt(vizEl.dataset.vizFidx, 10);
+      const wIdx = parseInt(vizEl.dataset.vizWidx, 10);
+      const file = state.files[fIdx];
+      if (!file || file.analysis.error) return;
+      const wall = file.analysis.walls ? file.analysis.walls[wIdx] : file.analysis;
+      if (!wall || wall.error) return;
+
+      let html = '';
+      if (vizEl.classList.contains('viz-hole')) {
+        const idx = parseInt(vizEl.dataset.vizHole, 10);
+        const hole = (wall.holes || []).find(h => h.idx === idx);
+        if (!hole) return;
+        const catLabel = hole.category === 'tuer' ? 'Tür' : hole.category === 'fenster' ? 'Fenster' : 'klein';
+        let typLabel;
+        if (hole.isBorderOpening) {
+          const m = { L: 'randoffen links', R: 'randoffen rechts', U: 'bodentief (unten)', O: 'deckenhoch (oben)' };
+          typLabel = m[hole.borderEdge] || ('rand-' + hole.borderEdge);
+        } else {
+          typLabel = 'intern';
+        }
+        const isAbzug = isHoleAbzug(fIdx, wIdx, hole);
+        const excludedNote = hole.alreadyExcludedFromShadow ? '<div class="tt-row"><span class="tt-key">Hinweis:</span><span class="tt-val">bereits im Schatten ausgespart</span></div>' : '';
+        html = `
+          <div class="tt-title">Öffnung #${idx + 1} · ${catLabel}</div>
+          <div class="tt-row"><span class="tt-key">Typ:</span><span class="tt-val">${typLabel}</span></div>
+          <div class="tt-row"><span class="tt-key">Fläche:</span><span class="tt-val">${fmtM2(hole.areaM2)} m²</span></div>
+          <div class="tt-row"><span class="tt-key">Maße:</span><span class="tt-val">${fmtMm(hole.worldW)} × ${fmtMm(hole.worldH)} mm</span></div>
+          ${excludedNote}
+          <div class="tt-status ${isAbzug ? 'abzug' : 'kein-abzug'}">
+            ${isAbzug ? '✓ wird abgezogen' : '○ wird übermessen'}
+          </div>
+          <div class="tt-hint">Klick → in Tabelle springen</div>
+        `;
+      } else {
+        const idx = parseInt(vizEl.dataset.vizIndent, 10);
+        const ind = (wall.indents || []).find(i => i.idx === idx);
+        if (!ind) return;
+        const isFilled = isIndentFilled(fIdx, wIdx, ind);
+        html = `
+          <div class="tt-title">Einbuchtung E${idx + 1}</div>
+          <div class="tt-row"><span class="tt-key">Fläche:</span><span class="tt-val">${fmtM2(ind.areaM2)} m²</span></div>
+          <div class="tt-row"><span class="tt-key">Maße:</span><span class="tt-val">${fmtMm(ind.worldW)} × ${fmtMm(ind.worldH)} mm</span></div>
+          <div class="tt-row"><span class="tt-key">Kanten:</span><span class="tt-val">${(ind.edges || []).join('')}</span></div>
+          <div class="tt-status ${isFilled ? 'filled' : 'unfilled'}">
+            ${isFilled ? '✓ als Eckverbindung aufgefüllt' : '○ nicht aufgefüllt'}
+          </div>
+          <div class="tt-hint">Klick → in Tabelle springen</div>
+        `;
+      }
+      tooltipEl.innerHTML = html;
+      tooltipEl.style.display = 'block';
+      positionTooltip(e);
+    });
+
+    container.addEventListener('pointermove', e => {
+      if (tooltipEl.style.display === 'block') {
+        const vizEl = e.target.closest('.viz-hole, .viz-indent');
+        if (vizEl) positionTooltip(e);
+      }
+    });
+
+    container.addEventListener('pointerout', e => {
+      const vizEl = e.target.closest('.viz-hole, .viz-indent');
+      if (!vizEl) return;
+      // Nur ausblenden wenn wir wirklich das Element verlassen, nicht ein Kind betreten
+      const related = e.relatedTarget;
+      if (related && vizEl.contains(related)) return;
+      tooltipEl.style.display = 'none';
+    });
+
+    function positionTooltip(e) {
+      const padding = 14;
+      const tw = tooltipEl.offsetWidth || 200;
+      const th = tooltipEl.offsetHeight || 80;
+      let x = e.clientX + padding;
+      let y = e.clientY + padding;
+      // Rand-Behandlung — nicht über Viewport-Rand laufen lassen
+      if (x + tw > window.innerWidth - 8) x = e.clientX - tw - padding;
+      if (y + th > window.innerHeight - 8) y = e.clientY - th - padding;
+      if (x < 8) x = 8;
+      if (y < 8) y = 8;
+      tooltipEl.style.left = x + 'px';
+      tooltipEl.style.top = y + 'px';
+    }
+  }
+
+  // Aktualisiert nur den Inhalt + Header-Werte einer einzelnen Wand-Card,
+  // ohne den Rest des DOM neu zu rendern.
+  function updateWallCard(fIdx, wIdx) {
+    const file = state.files[fIdx];
+    if (!file || file.analysis.error) {
+      renderResults();
+      return;
+    }
+    const wall = file.analysis.walls ? file.analysis.walls[wIdx] : file.analysis;
+    if (!wall) return;
+    const hdr = file.parsed.header;
+    const card = document.querySelector(`.file-card[data-fidx="${fIdx}"][data-widx="${wIdx}"]`);
+    if (!card) return;
+
+    // Header-Werte aktualisieren
+    const method = state.displayMethod || 'varB';
+    const meta = METHOD_META[method];
+    const brutto = methodBruttoM2(fIdx, wIdx, wall, method);
+    const abzug = methodAbzugM2(fIdx, wIdx, wall, method);
+    const netto = brutto - abzug;
+    const valuesEl = card.querySelector('.header-values');
+    if (valuesEl) {
+      valuesEl.innerHTML = `
+        <span><span class="v-label">brutto</span><span class="v-brutto">${fmtM2(brutto)} m²</span></span>
+        <span><span class="v-label">${meta.letter} netto</span><span class="v-netto">${fmtM2(netto)} m²</span></span>
+      `;
+    }
+
+    // Body neu rendern
+    const body = card.querySelector('.file-card-body');
+    if (body) {
+      body.innerHTML = renderWallContent(fIdx, wIdx, wall, hdr);
+      // Klassen aktualisieren (warning-severity könnte sich ändern), Card-data und Collapse-State erhalten
+      const wasCollapsed = card.classList.contains('collapsed');
+      card.className = 'file-card' + warningSeverityClass(wall);
+      if (wasCollapsed) card.classList.add('collapsed');
+      attachEventHandlers();
+      restoreUiState();
+    }
+  }
+
+  // Stellt nach einem Render den UI-State (Tab-Fokus, eingeklappte Cards) wieder her
+  function restoreUiState() {
+    // Alle file-cards durchgehen
+    document.querySelectorAll('.file-card[data-fidx][data-widx]').forEach(card => {
+      const fIdx = card.dataset.fidx, wIdx = card.dataset.widx;
+      const k = `${fIdx}_${wIdx}`;
+      const s = state.wallUiState[k];
+      // Default: eingeklappt, wenn noch kein expliziter Wunsch vom User
+      const collapsed = s && s.collapsed !== undefined ? s.collapsed : true;
+      if (collapsed) card.classList.add('collapsed');
+      else card.classList.remove('collapsed');
+      // Aktiven Tab setzen, wenn vorhanden
+      if (s && s.activeTab) {
+        const paneLeft = card.querySelector('.wall-pane-left');
+        const scope = paneLeft || card.querySelector('.file-card-body');
+        if (scope) {
+          const tab = scope.querySelector(`.tab[data-tab="${s.activeTab}"]`);
+          const content = scope.querySelector('#' + s.activeTab);
+          if (tab && content) {
+            const tabsEl = tab.parentElement;
+            tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            scope.querySelectorAll(':scope > .tab-content').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            content.classList.add('active');
+          }
+        }
+      }
+      // Split-Verhältnis anwenden
+      if (s && typeof s.splitRatio === 'number') {
+        applySplitRatio(card, s.splitRatio);
+      }
+    });
+  }
+
+  // Setzt das Verhältnis der beiden Panes auf einer Card
+  function applySplitRatio(card, ratio) {
+    const left = card.querySelector('.wall-pane-left');
+    const right = card.querySelector('.wall-pane-right');
+    if (!left || !right) return;
+    // Clamp 20%..80%
+    const r = Math.max(0.2, Math.min(0.8, ratio));
+    left.style.flex = `1 1 ${(r * 100).toFixed(1)}%`;
+    right.style.flex = `1 1 ${((1 - r) * 100).toFixed(1)}%`;
+  }
+
+  // ============================================================
+  //  FILE LOADING
+  // ============================================================
+  async function handleFiles(fileList) {
+    const status = document.getElementById('parserStatus');
+    status.textContent = `lese ${fileList.length} Datei(en)...`;
+    status.className = '';
+
+    const newFiles = [];
+    for (const file of fileList) {
+      try {
+        const text = await readFileText(file);
+        const parsed = parseWUP(text);
+        const analysis = analyzeFile(parsed, state.settings);
+        newFiles.push({ name: file.name, raw: text, parsed, analysis });
+      } catch (err) {
+        console.error('Fehler beim Verarbeiten von', file.name, err);
+        newFiles.push({
+          name: file.name, raw: '', parsed: { header: {}, beams: [], plates: [], stats: {} },
+          analysis: { error: err.message || 'Lesefehler' }
+        });
+      }
+    }
+    const startIdx = state.files.length;
+    state.files = state.files.concat(newFiles);
+
+    // Wenn kein pendingImport läuft, Overrides der NEUEN Dateien sind sowieso leer.
+    // Wenn ein pendingImport läuft: pro neu geladener Datei matchen
+    if (state.pendingImport) {
+      for (let i = startIdx; i < state.files.length; i++) {
+        applyPendingImportToFile(i);
+      }
+      renderPendingImportPanel();
+    }
+
+    renderResults();
+    status.textContent = `${state.files.length} Datei(en) geladen`;
+    status.className = 'success';
+  }
+
+  function reanalyzeAll() {
+    const status = document.getElementById('parserStatus');
+    status.textContent = 'analysiere neu...';
+    state.settings.rasterMm = parseFloat(document.getElementById('rasterMm').value) || 2;
+    state.settings.thresholdFenster = parseFloat(document.getElementById('thresholdFenster').value) || 0.25;
+    state.settings.thresholdAbzug = parseFloat(document.getElementById('thresholdAbzug').value) || 2.5;
+    state.abzugOverrides = {};
+    setTimeout(() => {
+      for (const file of state.files) {
+        try {
+          file.analysis = analyzeFile(file.parsed, state.settings);
+        } catch (err) {
+          file.analysis = { error: err.message || 'Analyse-Fehler' };
+        }
+      }
+      renderResults();
+      status.textContent = 'fertig';
+      status.className = 'success';
+    }, 50);
+  }
+
+  // ============================================================
+  //  EXPORT
+  // ============================================================
+  // ============================================================
+  //  JSON-IMPORT (Konfigurations-Wiederherstellung)
+  // ============================================================
+
+  // Liest eine JSON-Konfigurationsdatei und legt sie als pendingImport ab.
+  // Anwendet wird der Import, sobald die passenden WUP-Dateien geladen wurden
+  // (über applyPendingImportToFile).
+  async function loadJsonImport(file) {
+    const status = document.getElementById('jsonImportStatus');
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const imp = data._import;
+      if (!imp || !Array.isArray(imp.walls)) {
+        status.textContent = 'Datei enthält keinen Import-Block';
+        status.className = 'json-import-status error';
+        return;
+      }
+      state.pendingImport = imp;
+      // Methode aus Import übernehmen
+      if (imp.displayMethod && METHOD_META[imp.displayMethod]) {
+        state.displayMethod = imp.displayMethod;
+        const ms = document.getElementById('displayMethod');
+        if (ms) ms.value = imp.displayMethod;
+      }
+      // Settings ggf. übernehmen
+      if (data.settings) {
+        if (typeof data.settings.rasterMm === 'number') {
+          state.settings.rasterMm = data.settings.rasterMm;
+          const el = document.getElementById('rasterMm');
+          if (el) el.value = data.settings.rasterMm;
+        }
+        if (typeof data.settings.thresholdFenster === 'number') {
+          state.settings.thresholdFenster = data.settings.thresholdFenster;
+          const el = document.getElementById('thresholdFenster');
+          if (el) el.value = data.settings.thresholdFenster;
+        }
+        if (typeof data.settings.thresholdAbzug === 'number') {
+          state.settings.thresholdAbzug = data.settings.thresholdAbzug;
+          const el = document.getElementById('thresholdAbzug');
+          if (el) el.value = data.settings.thresholdAbzug;
+        }
+      }
+      // Bereits geladene Dateien sofort matchen
+      state.files.forEach((f, fIdx) => applyPendingImportToFile(fIdx));
+      status.textContent = `${imp.walls.length} Wand-Konfiguration(en) geladen`;
+      status.className = 'json-import-status success';
+      renderPendingImportPanel();
+      if (state.files.length > 0) renderResults();
+    } catch (err) {
+      console.error('JSON-Import-Fehler:', err);
+      status.textContent = 'Fehler: ' + (err.message || err);
+      status.className = 'json-import-status error';
+    }
+  }
+
+  // Wendet alle passenden Einträge des pendingImport auf eine bestimmte geladene Datei an
+  function applyPendingImportToFile(fIdx) {
+    if (!state.pendingImport) return;
+    const file = state.files[fIdx];
+    if (!file || file.analysis.error) return;
+    const walls = file.analysis.walls || [file.analysis];
+    const fileEln = file.parsed.header.ELN;
+
+    walls.forEach((w, wIdx) => {
+      if (w.error) return;
+      const wEln = (w.range && w.range.eln) || fileEln;
+      const wZnr = (w.range && w.range.znr) || file.parsed.header.ZNR;
+      // Suche passenden Eintrag im pendingImport
+      const entry = state.pendingImport.walls.find(e => {
+        if (e.fileName === file.name && e.wallIndex === wIdx) return true;
+        // Fallback: ELN+ZNR
+        if (e.eln && e.eln === wEln && e.znr === wZnr) return true;
+        return false;
+      });
+      if (!entry) return;
+      // Anwenden
+      if (entry.deleted) setWallDeleted(fIdx, wIdx, true);
+      if (entry.holes) {
+        for (const hIdxStr of Object.keys(entry.holes)) {
+          const hIdx = parseInt(hIdxStr, 10);
+          state.abzugOverrides[`${fIdx}_${wIdx}_${hIdx}`] = entry.holes[hIdxStr];
+        }
+      }
+      if (entry.indents) {
+        for (const iIdxStr of Object.keys(entry.indents)) {
+          const iIdx = parseInt(iIdxStr, 10);
+          state.indentOverrides[`${fIdx}_${wIdx}_${iIdx}`] = entry.indents[iIdxStr];
+        }
+      }
+      // Markiere als matched
+      entry._matched = true;
+    });
+  }
+
+  // Zeigt die Liste der erwarteten WUP-Dateien aus dem pendingImport
+  function renderPendingImportPanel() {
+    const panel = document.getElementById('pendingImportPanel');
+    if (!panel) return;
+    if (!state.pendingImport || !state.pendingImport.walls.length) {
+      panel.style.display = 'none';
+      return;
+    }
+    // Gruppiere nach Datei-Name
+    const byFile = {};
+    state.pendingImport.walls.forEach(w => {
+      const key = w.fileName || '?';
+      if (!byFile[key]) byFile[key] = { name: key, walls: [], anyMatched: false };
+      byFile[key].walls.push(w);
+      if (w._matched) byFile[key].anyMatched = true;
+    });
+    const fileEntries = Object.values(byFile);
+    const matched = fileEntries.filter(f => f.anyMatched).length;
+    const total = fileEntries.length;
+
+    panel.style.display = 'block';
+    let html = `<div class="header">JSON-Import läuft · ${matched}/${total} Dateien geladen</div>`;
+    fileEntries.forEach(f => {
+      const cls = f.anyMatched ? 'matched' : 'pending';
+      const icon = f.anyMatched ? '✓' : '○';
+      const detail = f.walls.length > 1 ? ` (${f.walls.length} Wände)` : '';
+      html += `<div class="file-row ${cls}"><span class="status-dot"></span><span>${icon} ${f.name}${detail}</span></div>`;
+    });
+    html += `<button class="reset-btn" id="cancelImportBtn" type="button">Import abbrechen</button>`;
+    panel.innerHTML = html;
+
+    const cancelBtn = document.getElementById('cancelImportBtn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        state.pendingImport = null;
+        const status = document.getElementById('jsonImportStatus');
+        if (status) { status.textContent = ''; status.className = 'json-import-status'; }
+        panel.style.display = 'none';
+      });
+    }
+  }
+
+  function exportCSV() {
+    const fmt = v => (typeof v === 'number') ? v.toFixed(3).replace('.', ',') : (v == null ? '' : v);
+    const method = state.displayMethod || 'varB';
+    const meta = METHOD_META[method];
+    const rows = [
+      ['Bauvorhaben', 'ZNR', 'ELN', 'Datei',
+       `${meta.letter}: Brutto [m²]`,
+       `${meta.letter}: Abzug [m²]`,
+       `${meta.letter}: Netto [m²]`]
+    ];
+    let tBrutto = 0, tAbzug = 0;
+    state.files.forEach((file, fIdx) => {
+      const a = file.analysis;
+      if (a.error) {
+        rows.push(['', '', '', file.name, 'FEHLER: ' + a.error, '', '']);
+        return;
+      }
+      const txt = file.parsed.txt || {};
+      const bauvorhaben = txt.bauvorhaben || txt.objekt || txt.project || '';
+      const walls = a.walls || [a];
+      walls.forEach((w, wIdx) => {
+        if (isWallDeleted(fIdx, wIdx)) return;
+        if (w.error) {
+          rows.push([bauvorhaben, '', (w.range && w.range.name) || `Wand ${wIdx+1}`, file.name, 'FEHLER: ' + w.error, '', '']);
+          return;
+        }
+        const brutto = methodBruttoM2(fIdx, wIdx, w, method);
+        const abzug = methodAbzugM2(fIdx, wIdx, w, method);
+        const netto = brutto - abzug;
+        const eln = (w.range && w.range.eln) || file.parsed.header.ELN || '';
+        const znr = (w.range && w.range.znr) || file.parsed.header.ZNR || '';
+        tBrutto += brutto; tAbzug += abzug;
+        rows.push([
+          bauvorhaben, znr, eln, file.name,
+          fmt(brutto), fmt(abzug), fmt(netto),
+        ]);
+      });
+    });
+    rows.push([]);
+    rows.push(['SUMME', '', '', '',
+      fmt(tBrutto), fmt(tAbzug), fmt(tBrutto - tAbzug)]);
+
+    const csv = rows.map(r => r.map(c => {
+      const s = String(c);
+      if (s.includes(';') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }).join(';')).join('\n');
+    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), 'wup-analyse.csv');
+  }
+
+  function exportJSON() {
+    const data = state.files.map((f, fIdx) => {
+      if (f.analysis.error) {
+        return { file: f.name, header: f.parsed.header, analysis: { error: f.analysis.error } };
+      }
+      const walls = f.analysis.walls || [f.analysis];
+      const wallsExport = walls.map((w, wIdx) => {
+        if (w.error) return { error: w.error, range: w.range };
+        const abzugA = methodAbzugM2(fIdx, wIdx, w, 'bbox');
+        const abzugB = methodAbzugM2(fIdx, wIdx, w, 'varB');
+        const abzugC = methodAbzugM2(fIdx, wIdx, w, 'shadow');
+        const bruttoA = methodBruttoM2(fIdx, wIdx, w, 'bbox');
+        const bruttoB = methodBruttoM2(fIdx, wIdx, w, 'varB');
+        const bruttoC = methodBruttoM2(fIdx, wIdx, w, 'shadow');
+        return {
+          name: (w.range && w.range.name) || `Wand ${wIdx+1}`,
+          range: w.range,
+          deleted: isWallDeleted(fIdx, wIdx),
+          bboxM2: w.bboxM2,
+          shadowM2: w.shadowM2,
+          varianteB_M2: calcVarianteB(fIdx, wIdx, w),
+          brutto: { bbox: bruttoA, varB: bruttoB, shadow: bruttoC },
+          netto:  { bbox: bruttoA - abzugA, varB: bruttoB - abzugB, shadow: bruttoC - abzugC },
+          abzug:  { bbox: abzugA, varB: abzugB, shadow: abzugC },
+          plateOnlyM2: w.plateOnlyM2,
+          beamOnlyM2: w.beamOnlyM2,
+          beamOutsidePlatesM2: w.beamOutsidePlatesM2,
+          innerM2: w.innerM2,
+          bounds: w.bounds,
+          holes: (w.holes || []).map(h => ({
+            idx: h.idx, areaM2: h.areaM2,
+            worldW: h.worldW, worldH: h.worldH,
+            centerX: h.centerX, centerY: h.centerY,
+            category: h.category,
+            isBorderOpening: !!h.isBorderOpening,
+            borderEdge: h.borderEdge || null,
+            alreadyExcludedFromShadow: !!h.alreadyExcludedFromShadow,
+            abzug: isHoleAbzug(fIdx, wIdx, h),
+          })),
+          indents: (w.indents || []).map(i => ({
+            idx: i.idx, areaM2: i.areaM2,
+            worldW: i.worldW, worldH: i.worldH,
+            centerX: i.centerX, centerY: i.centerY,
+            edges: i.edges,
+            filled: isIndentFilled(fIdx, wIdx, i),
+          })),
+          warnings: w.warnings || [],
+          degradedMode: !!w.degradedMode,
+        };
+      });
+      return {
+        file: f.name,
+        header: f.parsed.header,
+        txt: f.parsed.txt || {},
+        isMultiWall: f.analysis.isMultiWall || false,
+        wallCount: f.analysis.wallCount || 1,
+        walls: wallsExport,
+        plateCount: f.parsed.plates.length,
+        beamCount: f.parsed.beams.length,
+      };
+    });
+
+    // === IMPORT-BLOCK ===
+    // Kompakter Override-Block der beim erneuten Import die User-Entscheidungen wiederherstellt.
+    // Identifiziert Wände über file.name + ELN + ZNR (robust gegen Reihenfolge der Datei-Auswahl).
+    const importBlock = {
+      version: 1,
+      displayMethod: state.displayMethod,
+      walls: [],
+    };
+    state.files.forEach((file, fIdx) => {
+      if (file.analysis.error) return;
+      const walls = file.analysis.walls || [file.analysis];
+      walls.forEach((w, wIdx) => {
+        if (w.error) return;
+        const wallEntry = {
+          fileName: file.name,
+          eln: (w.range && w.range.eln) || file.parsed.header.ELN,
+          znr: (w.range && w.range.znr) || file.parsed.header.ZNR,
+          wallIndex: wIdx,
+          deleted: isWallDeleted(fIdx, wIdx),
+          holes: {},   // {holeIdx: abzug-bool}
+          indents: {}, // {indentIdx: filled-bool}
+        };
+        (w.holes || []).forEach(h => {
+          const key = `${fIdx}_${wIdx}_${h.idx}`;
+          // Nur explizit gesetzte Overrides exportieren (nicht Default)
+          if (state.abzugOverrides.hasOwnProperty(key)) {
+            wallEntry.holes[h.idx] = state.abzugOverrides[key];
+          }
+        });
+        (w.indents || []).forEach(ind => {
+          const key = `${fIdx}_${wIdx}_${ind.idx}`;
+          if (state.indentOverrides.hasOwnProperty(key)) {
+            wallEntry.indents[ind.idx] = state.indentOverrides[key];
+          }
+        });
+        // Nur exportieren, wenn etwas zu speichern ist
+        if (wallEntry.deleted || Object.keys(wallEntry.holes).length || Object.keys(wallEntry.indents).length) {
+          importBlock.walls.push(wallEntry);
+        }
+      });
+    });
+
+    const json = JSON.stringify({
+      generated: new Date().toISOString(),
+      settings: state.settings,
+      _import: importBlock,
+      files: data,
+    }, null, 2);
+    downloadBlob(new Blob([json], { type: 'application/json' }), 'wup-analyse.json');
+  }
+
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+  }
+
+  // ============================================================
+  //  INIT
+  // ============================================================
+  function init() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files && e.target.files.length) {
+        handleFiles(Array.from(e.target.files));
+      }
+      e.target.value = '';  // Erlaubt erneutes Hochladen derselben Datei
+    });
+
+    // JSON-Import-Datei-Picker
+    const jsonInput = document.getElementById('jsonImportInput');
+    if (jsonInput) {
+      jsonInput.addEventListener('change', e => {
+        if (e.target.files && e.target.files.length) {
+          loadJsonImport(e.target.files[0]);
+        }
+        e.target.value = '';
+      });
+    }
+
+    // dragenter/dragleave-Counter, damit verschachtelte Elemente nicht zu Flackern führen
+    let dragCounter = 0;
+
+    // dragover muss preventDefault aufrufen, sonst akzeptiert der Browser das drop nicht
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+
+    dropZone.addEventListener('dragenter', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter++;
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropZone.classList.remove('dragover');
+      }
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter = 0;
+      dropZone.classList.remove('dragover');
+
+      if (!e.dataTransfer || !e.dataTransfer.files) return;
+      const all = Array.from(e.dataTransfer.files);
+      const wup = all.filter(f => /\.wup$/i.test(f.name));
+      const skipped = all.length - wup.length;
+
+      if (wup.length === 0) {
+        const status = document.getElementById('parserStatus');
+        status.textContent = `Keine .wup-Dateien gefunden (${all.length} Datei(en) abgelegt)`;
+        status.className = 'error';
+        return;
+      }
+      if (skipped > 0) {
+        const status = document.getElementById('parserStatus');
+        status.textContent = `${skipped} Datei(en) übersprungen (keine .wup-Endung)`;
+        status.className = 'warning';
+      }
+      handleFiles(wup);
+    });
+
+    // Verhindere, dass das Browser-Default-Verhalten (Datei im Browser öffnen) auslöst,
+    // wenn der Nutzer außerhalb der Drop-Zone fällt.
+    window.addEventListener('dragover', e => { e.preventDefault(); }, false);
+    window.addEventListener('drop', e => { e.preventDefault(); }, false);
+
+    document.getElementById('reanalyzeBtn').addEventListener('click', reanalyzeAll);
+    document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+    document.getElementById('exportJsonBtn').addEventListener('click', exportJSON);
+
+    // Methoden-Dropdown: nur Re-Rendern (keine Re-Analyse nötig)
+    const methodSelect = document.getElementById('displayMethod');
+    if (methodSelect) {
+      // Initial-Wert aus State übernehmen
+      methodSelect.value = state.displayMethod || 'varB';
+      methodSelect.addEventListener('change', () => {
+        state.displayMethod = methodSelect.value;
+        if (state.files.length > 0) renderResults();
+      });
+    }
+
+    // Hilfe-Button: Methoden-Hilfe-Box auf-/zuklappen
+    const helpBtn = document.getElementById('methodHelpBtn');
+    const helpBox = document.getElementById('methodHelpBox');
+    if (helpBtn && helpBox) {
+      helpBtn.addEventListener('click', () => {
+        const visible = helpBox.style.display !== 'none';
+        helpBox.style.display = visible ? 'none' : 'block';
+        helpBtn.classList.toggle('active', !visible);
+      });
+    }
+
+    // Settings auto-update (Re-Analyse erforderlich)
+    ['rasterMm', 'thresholdFenster', 'thresholdAbzug'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        if (state.files.length > 0) reanalyzeAll();
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
