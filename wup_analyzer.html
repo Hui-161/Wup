@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WUP Analyzer — Phase 1</title>
+<title>WUP Analyzer</title>
 <style>
   /* ======================================================
      LOKAL-ONLY: keine externen Fonts, keine externen Scripts.
@@ -915,7 +915,7 @@
 
 <header>
   <h1>WUP Analyzer</h1>
-  <div class="sub">Phase 1 · Außenkontur &amp; Öffnungs-Erkennung · Lokal · v0.1</div>
+  <div class="sub">Außenkontur &amp; Öffnungs-Erkennung · lokal im Browser</div>
 </header>
 
 <main>
@@ -1454,11 +1454,11 @@
         continue;
       }
       if (kw === 'KB') {
-        // Kreisbogen — wir approximieren als Geraden für Phase 1 (Vereinfachung dokumentieren)
+        // Kreisbogen — wir approximieren als Geraden (Vereinfachung dokumentieren)
         if (currentPolyTarget) {
           const x = paramFloat(params, 0, 0);
           const y = paramFloat(params, 1, 0);
-          // Phase 1: nur Endpunkt, kein echter Bogen — Fläche wird leicht unterschätzt
+          // Nur Endpunkt, kein echter Bogen — Fläche wird leicht unterschätzt
           currentPolyTarget.push([x, y, 'KB']);
         }
         continue;
@@ -1497,7 +1497,7 @@
           const by = paramFloat(params, 1, 0);
           const xm = paramFloat(params, 2, 0);
           const ym = paramFloat(params, 3, 0);
-          // ignorieren wir z, t, r, alpha, delta für Phase 1
+          // ignorieren wir z, t, r, alpha, delta (vereinfachte Geometrie reicht für Flächen-Berechnung)
           const ring = [
             [xm - lx/2, ym - by/2],
             [xm + lx/2, ym - by/2],
@@ -1580,7 +1580,7 @@
         }
       }
 
-      // ===== other (PROPERTY etc): ignored for Phase 1 =====
+      // ===== other (PROPERTY etc): ignored =====
       if (kw === 'PROPERTY') { continue; }
 
       // Ende eines Polygonzugs durch unbekanntes Schlüsselwort
