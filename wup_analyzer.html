@@ -453,97 +453,6 @@
     color: var(--bg);
   }
 
-  /* ===== Multiwand: äußere Datei-Card mit Summen, innere Wand-Cards ===== */
-  .file-card.multiwall .file-card-header {
-    background: linear-gradient(180deg, rgba(63, 185, 80, 0.06), rgba(63, 185, 80, 0.02));
-    border-bottom-color: rgba(63, 185, 80, 0.18);
-  }
-  .file-card.multiwall .file-card-header h3 {
-    color: #88d399;
-  }
-  .multi-summary {
-    background: rgba(63, 185, 80, 0.04);
-    border: 1px solid rgba(63, 185, 80, 0.18);
-    border-radius: 6px;
-    padding: 14px;
-    margin-bottom: 16px;
-  }
-  .multi-summary .method-card {
-    background: var(--bg-elevated);
-  }
-  .walls-container {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .wall-card {
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: 5px;
-    background: var(--bg-card, rgba(0,0,0,0.12));
-    overflow: hidden;
-  }
-  .wall-card-header {
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.025);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    cursor: pointer;
-    user-select: none;
-  }
-  .wall-card-header:hover { background: rgba(255, 255, 255, 0.045); }
-  .wall-card-header h4 {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .wall-card-header .meta {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-  .wall-card-header .toggle::before {
-    content: "▾";
-    color: var(--text-muted);
-    transition: transform 0.15s;
-    display: inline-block;
-  }
-  .wall-card.collapsed .toggle::before { transform: rotate(-90deg); }
-  .wall-card.collapsed .wall-card-body { display: none; }
-  .wall-card-body { padding: 14px; }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 18px;
-  }
-  .stat {
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 10px 12px;
-  }
-  .stat .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--text-dim);
-  }
-  .stat .value {
-    font-family: var(--font-mono);
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text);
-    margin-top: 2px;
-  }
-  .stat.accent .value { color: var(--accent); }
-  .stat.good .value { color: var(--good); }
-  .stat.bad .value { color: var(--bad); }
-
   /* ===== Holes Table ===== */
   table.holes {
     width: 100%;
@@ -739,14 +648,6 @@
   .button-row { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 
   /* ===== Status & Errors ===== */
-  .status-bar {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    padding: 8px 18px;
-    background: var(--bg-input);
-    border-top: 1px solid var(--border);
-  }
   .error { color: var(--bad); }
   .warning { color: var(--warn); }
   .success { color: var(--good); }
@@ -871,105 +772,6 @@
   }
 
   /* ===== Method Cards (3 parallele Berechnungsmethoden) ===== */
-  .method-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 14px;
-    margin-bottom: 18px;
-  }
-  .method-card {
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 14px 16px;
-    position: relative;
-  }
-  .method-card.recommended {
-    border-color: var(--accent);
-    background: linear-gradient(180deg, rgba(255, 122, 0, 0.06), var(--bg-input) 50%);
-  }
-  .method-card.recommended::before {
-    content: "EMPFOHLEN";
-    position: absolute;
-    top: -8px;
-    right: 12px;
-    background: var(--accent);
-    color: #000;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-    padding: 2px 8px;
-    border-radius: 2px;
-  }
-  .method-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
-  .method-formula {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-  .method-brutto {
-    font-family: var(--font-mono);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 8px;
-  }
-  .method-card.recommended .method-brutto { color: var(--accent); }
-  .method-row {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    display: flex;
-    justify-content: space-between;
-    padding-bottom: 6px;
-    border-bottom: 1px dashed var(--border);
-    margin-bottom: 6px;
-  }
-  .method-net {
-    font-family: var(--font-mono);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--good);
-    text-align: right;
-  }
-  .method-net::before {
-    content: "= ";
-    color: var(--text-dim);
-  }
-
-  .info-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 10px;
-    padding: 10px 12px;
-    background: rgba(0,0,0,0.2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    margin-bottom: 8px;
-  }
-  .info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .info-key {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--text-dim);
-  }
-  .info-val {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text);
-  }
 
   /* ===== Warnungs-Banner inline in Übersicht ===== */
   .warnings-block {
@@ -1016,9 +818,6 @@
   .warning-banner.info .warning-icon { color: #a8c8f0; }
 
   /* Wand-Card mit Fehlern: roter Akzent-Strich links */
-  .wall-card.has-errors { border-left-color: #d4537e; }
-  .wall-card.has-warnings { border-left-color: #f7b259; }
-  /* Auch für Einzelwand-File-Cards */
   .file-card.has-errors { border-left: 3px solid #d4537e; }
   .file-card.has-warnings { border-left: 3px solid #f7b259; }
 
@@ -1109,12 +908,6 @@
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text-muted);
-  }
-
-  .tech-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
-    margin: 24px 0;
   }
 </style>
 </head>
@@ -1270,12 +1063,9 @@
     abzugOverrides: {},
     // Pro-Einbuchtung-Override: Map<fileIdx_wallIdx_indentIdx, true|false>
     indentOverrides: {},
-    // UI-State der Wand-Cards: welcher Tab ist aktiv, welche Card eingeklappt
-    // Map<`${fIdx}_${wIdx}`, {activeTab: string, collapsed: boolean}>
+    // UI-State der Wand-Cards: welcher Tab ist aktiv, welche Card eingeklappt, Split-Verhältnis
+    // Map<`${fIdx}_${wIdx}`, {activeTab: string, collapsed: boolean, splitRatio: number}>
     wallUiState: {},
-    // UI-State der Datei-Cards (nur Multiwand-Outer)
-    // Map<fIdx, {collapsed: boolean}>
-    fileUiState: {},
     // Gelöschte Wände: Set<`${fIdx}_${wIdx}`>
     deletedWalls: {},
     // Aussteh­ender Import aus geladener JSON-Datei. {walls: [...]} — wird angewendet sobald
@@ -1359,7 +1149,10 @@
         if (!t.startsWith('TXT')) continue;
         const content = t.replace(/^TXT\s+/, '').replace(/;$/, '').trim();
 
-        const beginMatch = content.match(/^Beginn Kommentare Element\s+(\d+)\s*:\s*(.+?)\s*\*+\s*$/);
+        // Begin-Marker. Zwei Format-Varianten beobachtet:
+        //   "Beginn Kommentare Element 1: PROJECT.WAND ******************"  (mit Sternchen)
+        //   "Beginn Kommentare Element 1: PROJECT.WAND"                     (ohne Sternchen)
+        const beginMatch = content.match(/^Beginn Kommentare Element\s+(\d+)\s*:\s*(.+?)(?:\s*\*+)?\s*$/);
         if (beginMatch) {
           const fullName = beginMatch[2].trim();
           const wallName = fullName.split('.').pop();
@@ -1399,15 +1192,14 @@
     let currentPolyTarget = null;   // an welches Polygon-Array wir gerade PP-Punkte hängen
     let currentPolyOwner = null;    // der besitzende Block (für Klassifikation)
     let currentPolyKW = null;       // PSG / PSF / PAF / PLATE_OUTLINE etc.
+    // Modul-Stack: alle Bauteile/Platten innerhalb eines MODUL-Blocks haben Koordinaten
+    // relativ zum Modul-Ursprung (params[3], params[4]). Wir tracken den aktuellen
+    // Offset und wenden ihn bei der Bauteil-/Platten-Erstellung an.
+    // Stack damit verschachtelte Module möglich sind.
+    let moduleOffsets = [{ x: 0, y: 0 }];
+    const currentOffset = () => moduleOffsets[moduleOffsets.length - 1];
 
     // Pending PSG/PAF/PSF block (Bauteilbearbeitung oder Lagenbearbeitung)
-    function startPolygon(kw, owner) {
-      currentPolyKW = kw;
-      currentPolyTarget = [];
-      currentPolyOwner = owner;
-      // Owner darf das polygon später konsumieren
-      return currentPolyTarget;
-    }
     function flushPolygon() {
       if (currentPolyTarget && currentPolyOwner) {
         currentPolyOwner.push({
@@ -1422,6 +1214,8 @@
 
     function newPlate(kw, params) {
       flushPolygon();
+      const off = currentOffset();
+      const ox = off.x, oy = off.y;
       const m = kw.match(RX_PLATE);
       const plate = {
         type: m[1],                              // PLI/PLA/SLI/SLA
@@ -1442,8 +1236,8 @@
         plate.lx = paramFloat(params, 0, 0);
         plate.by = paramFloat(params, 1, 0);
         plate.hz = paramFloat(params, 2, 0);
-        plate.x  = paramFloat(params, 3, 0);
-        plate.y  = paramFloat(params, 4, 0);
+        plate.x  = paramFloat(params, 3, 0) + ox;
+        plate.y  = paramFloat(params, 4, 0) + oy;
         plate.materialIdx = paramInt(params, 5, 0);
         plate.name = paramStr(params, 6, '');
         plate.z  = paramFloat(params, 7, 0);
@@ -1456,6 +1250,9 @@
         plate.name = paramStr(params, 16, '');
         plate.z  = paramFloat(params, 17, 0);
       }
+      if (moduleOffsets.length > 1) plate.fromModule = true;
+      // Modul-Offset für späteren Header-Outline-Rebuild merken
+      plate._moduleOffset = { x: ox, y: oy };
 
       result.plates.push(plate);
       currentPlate = plate;
@@ -1469,6 +1266,8 @@
     function newBeam(kw, params) {
       flushPolygon();
       const beam = { kw, params, processings: [] };
+      const off = currentOffset();
+      const ox = off.x, oy = off.y;
       // Common
       beam.lx = paramFloat(params, 0, 0);
       beam.by = paramFloat(params, 1, 0);
@@ -1485,12 +1284,12 @@
         [3,4,5,6,7,8,9,10].every(i => !isNaN(parseFloat(params[i])));
 
       if (looksLikePolygon) {
-        // 4-Eck-Polygon
+        // 4-Eck-Polygon (mit Modul-Offset)
         const pts = [
-          [paramFloat(params, 3, 0), paramFloat(params, 4, 0)],
-          [paramFloat(params, 5, 0), paramFloat(params, 6, 0)],
-          [paramFloat(params, 7, 0), paramFloat(params, 8, 0)],
-          [paramFloat(params, 9, 0), paramFloat(params, 10, 0)],
+          [paramFloat(params, 3, 0) + ox, paramFloat(params, 4, 0) + oy],
+          [paramFloat(params, 5, 0) + ox, paramFloat(params, 6, 0) + oy],
+          [paramFloat(params, 7, 0) + ox, paramFloat(params, 8, 0) + oy],
+          [paramFloat(params, 9, 0) + ox, paramFloat(params, 10, 0) + oy],
         ];
         beam.materialIdx = paramInt(params, 11, 0);
         beam.name = paramStr(params, 12, '');
@@ -1506,8 +1305,8 @@
         beam.isTrapezoid = true;  // Marker für Visualisierung & Diagnose
       } else if (kw === 'UG' || kw === 'OG' || kw === 'LS' || kw === 'EBT' || kw === 'BT4' || kw === 'BT6') {
         // Standard 8-Param: Längsrichtung — lx (horizontal), by (Breite vertikal)
-        beam.x = paramFloat(params, 3, 0);
-        beam.y = paramFloat(params, 4, 0);
+        beam.x = paramFloat(params, 3, 0) + ox;
+        beam.y = paramFloat(params, 4, 0) + oy;
         beam.materialIdx = paramInt(params, 5, 0);
         beam.name = paramStr(params, 6, '');
         beam.z = paramFloat(params, 7, 0);
@@ -1521,8 +1320,8 @@
       } else if (kw === 'QS') {
         // Querrichtung — ly (vertikal), bx (Breite horizontal)
         beam.ly = beam.lx; beam.bx = beam.by;
-        beam.x = paramFloat(params, 3, 0);
-        beam.y = paramFloat(params, 4, 0);
+        beam.x = paramFloat(params, 3, 0) + ox;
+        beam.y = paramFloat(params, 4, 0) + oy;
         beam.materialIdx = paramInt(params, 5, 0);
         beam.name = paramStr(params, 6, '');
         beam.z = paramFloat(params, 7, 0);
@@ -1537,6 +1336,8 @@
         // RT etc. — keine Outline
         beam.outline = null;
       }
+      // Mark beam as inside a module if we're nested
+      if (moduleOffsets.length > 1) beam.fromModule = true;
       result.beams.push(beam);
       currentBeam = beam;
       currentPlate = null;
@@ -1599,6 +1400,35 @@
       }
       if (kw === 'CAD' || kw === 'CADRELEASE' || kw === 'WNP') {
         result.header[kw] = params.join(',');
+        continue;
+      }
+
+      // ===== MODUL / ENDMODUL — Koordinaten-Offset =====
+      // MODUL definiert ein Sub-Element mit eigenem Koordinatensystem.
+      // Header: lx, by, hz, x_origin, y_origin, name, ?
+      // Alle Bauteile innerhalb sind relativ zu (x_origin, y_origin) positioniert.
+      if (kw === 'MODUL') {
+        flushPolygon();
+        const ox = paramFloat(params, 3, 0);
+        const oy = paramFloat(params, 4, 0);
+        const parent = currentOffset();
+        moduleOffsets.push({ x: parent.x + ox, y: parent.y + oy });
+        currentPlate = null;
+        currentBeam = null;
+        continue;
+      }
+      if (kw === 'ENDMODUL' || kw === 'ENDUNIT') {
+        flushPolygon();
+        if (moduleOffsets.length > 1) moduleOffsets.pop();
+        currentPlate = null;
+        currentBeam = null;
+        continue;
+      }
+      // UNIT-Wrapper (selten) — analoges Verhalten falls auftritt
+      if (kw === 'UNIT') {
+        flushPolygon();
+        // UNIT scheint kein Offset zu setzen (kein definitiver Header bekannt) — neutral
+        moduleOffsets.push({ x: currentOffset().x, y: currentOffset().y });
         continue;
       }
 
@@ -1760,6 +1590,47 @@
     }
     flushPolygon();
 
+    // ===== POST-PASS: Plattenumriss aus PLI/PLA-Header rekonstruieren =====
+    // Manche WUP-Dialekte (z.B. hsbDesign) geben für PLI/PLA keine PP-Outline
+    // direkt nach dem Header an, sondern nur die Header-Parameter (lx, by, x, y).
+    // Das ist ein einfaches Rechteck — wir konstruieren es nachträglich.
+    for (const plate of result.plates) {
+      if ((plate.outline || []).length >= 3) continue;  // bereits Outline
+      if (plate.type === 'PLI' || plate.type === 'PLA') {
+        if (plate.lx > 0 && plate.by > 0) {
+          const x0 = plate.x || 0, y0 = plate.y || 0;
+          const x1 = x0 + plate.lx, y1 = y0 + plate.by;
+          plate.outline = [
+            [x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0],
+          ];
+          plate.outlineFromHeader = true;
+        }
+      }
+      // SLI/SLA: schräge Platten — komplexer Header mit 6 Eckpunkten (xlu, ylu, xmu, ymu, xru, yru, xro, yro, xmo, ymo, xlo, ylo)
+      else if (plate.type === 'SLI' || plate.type === 'SLA') {
+        const ps = plate.params;
+        const off = plate._moduleOffset || { x: 0, y: 0 };
+        const ox = off.x, oy = off.y;
+        const xlu = paramFloat(ps, 3, NaN), ylu = paramFloat(ps, 4, NaN);
+        const xmu = paramFloat(ps, 5, NaN), ymu = paramFloat(ps, 6, NaN);
+        const xru = paramFloat(ps, 7, NaN), yru = paramFloat(ps, 8, NaN);
+        const xro = paramFloat(ps, 9, NaN), yro = paramFloat(ps, 10, NaN);
+        const xmo = paramFloat(ps, 11, NaN), ymo = paramFloat(ps, 12, NaN);
+        const xlo = paramFloat(ps, 13, NaN), ylo = paramFloat(ps, 14, NaN);
+        const corners = [];
+        const addIfValid = (x, y) => {
+          if (!isNaN(x) && !isNaN(y)) corners.push([x + ox, y + oy]);
+        };
+        addIfValid(xlu, ylu); addIfValid(xmu, ymu); addIfValid(xru, yru);
+        addIfValid(xro, yro); addIfValid(xmo, ymo); addIfValid(xlo, ylo);
+        if (corners.length >= 3) {
+          corners.push(corners[0]);  // schließen
+          plate.outline = corners;
+          plate.outlineFromHeader = true;
+        }
+      }
+    }
+
     return result;
   }
 
@@ -1768,18 +1639,6 @@
   // ============================================================
 
   // Shoelace-Algorithmus für signierte Polygonfläche
-  function polygonArea(points) {
-    if (!points || points.length < 3) return 0;
-    let a = 0;
-    const n = points.length;
-    for (let i = 0; i < n - 1; i++) {
-      a += points[i][0] * points[i+1][1] - points[i+1][0] * points[i][1];
-    }
-    // close
-    a += points[n-1][0] * points[0][1] - points[0][0] * points[n-1][1];
-    return Math.abs(a) / 2;
-  }
-
   function polygonBounds(points) {
     if (!points || !points.length) return null;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -2181,12 +2040,6 @@
   }
 
   // Backwards-compat Alias
-  function findBorderIndents(shadowRaster, polyBoundsX, polyBoundsY, autoFillCriteria) {
-    return findBorderComponents(shadowRaster, polyBoundsX, polyBoundsY, autoFillCriteria, {
-      thresholdFenster: 0.25, thresholdAbzug: 2.5, minSizeM2: 0.05, minEdgeMm: 100,
-    }).indents;
-  }
-
   // Schneidet ein Polygon (auch Trapeze) auf einen X-Bereich zu via Sutherland-Hodgman.
   // Returns das geclipte Polygon oder null wenn vollständig außerhalb.
   function clipBeamToXRange(beamOutline, xMin, xMax) {
@@ -2251,10 +2104,12 @@
       if (isDaemmung || isInGefach || tooThin) continue;
 
       let outerPolygon = null;
-      if (plate.psg && plate.psg.length > 0 && plate.psg[0].points.length >= 3) {
-        outerPolygon = plate.psg[0].points;
-      } else if (plate.outline && plate.outline.length >= 3) {
+      if (plate.outline && plate.outline.length >= 3) {
+        // PRIMÄR: echte Plattenform aus PP-Outline (oder rekonstruiert aus Header)
         outerPolygon = plate.outline;
+      } else if (plate.psg && plate.psg.length > 0 && plate.psg[0].points.length >= 3) {
+        // FALLBACK: erste PSG-Polygon nur wenn keine echte Outline existiert
+        outerPolygon = plate.psg[0].points;
       }
       if (!outerPolygon) continue;
 
@@ -2366,10 +2221,12 @@
       const tooThin = plate.hz <= 1;
 
       let outerPolygon = null;
-      if (plate.psg && plate.psg.length > 0 && plate.psg[0].points.length >= 3) {
-        outerPolygon = plate.psg[0].points;
-      } else if (plate.outline && plate.outline.length >= 3) {
+      if (plate.outline && plate.outline.length >= 3) {
+        // PRIMÄR: echte Plattenform aus PP-Outline (oder rekonstruiert aus Header)
         outerPolygon = plate.outline;
+      } else if (plate.psg && plate.psg.length > 0 && plate.psg[0].points.length >= 3) {
+        // FALLBACK: erste PSG-Polygon nur wenn keine echte Outline existiert
+        outerPolygon = plate.psg[0].points;
       }
       if (!outerPolygon) continue;
 
@@ -2849,20 +2706,17 @@
 
   // Liefert den Abzug-Betrag in m² je nach Methode.
   // - Methode A (Bbox): alle aktiven Öffnungen abziehen (User-Button entscheidet allein)
-  // - Methode B (Var. B): nur abziehen wenn Button aktiv UND Loch nicht bereits im Schatten
-  //   ausgespart. Bei bereits ausgesparten Öffnungen wird der Brutto-Wert in methodBruttoM2
-  //   stattdessen angepasst (siehe dort).
+  // - Methode B (Var. B): alle aktiven Öffnungen abziehen — der Brutto-Wert enthält bereits
+  //   die ausgesparten Löcher (siehe methodBruttoM2), also kein Doppel-Abzug.
   // - Methode C (Schatten): bleibt intelligent — nur abziehen wenn nicht bereits ausgespart
   //   (verhindert Doppel-Abzug, User-Button ist bei ausgesparten wirkungslos)
   function methodAbzugM2(fIdx, wIdx, w, method) {
     let total = 0;
     for (const h of (w.holes || [])) {
       if (!isHoleAbzug(fIdx, wIdx, h)) continue;
-      if (method !== 'bbox' && h.alreadyExcludedFromShadow) {
-        // Bei Methode B/C bei bereits ausgesparten Löchern: nicht abziehen
-        // (Endergebnis wird über methodBruttoM2 korrekt erreicht: Brutto = Schatten,
-        // also Netto = Schatten unabhängig vom Button. Bei B wird der Brutto angepasst
-        // wenn das Loch übermessen sein soll.)
+      if (method === 'shadow' && h.alreadyExcludedFromShadow) {
+        // Bei Methode C bei bereits ausgesparten Löchern: nicht abziehen
+        // (verhindert Doppel-Abzug; User-Button ist hier wirkungslos)
         continue;
       }
       total += h.areaM2;
@@ -2878,18 +2732,18 @@
   };
 
   // Liefert Brutto-Wert der gewählten Methode für eine Wand.
-  // Variante B: Schatten + aufgefüllte Eckverbindungen + bereits-ausgesparte Öffnungen
-  //   die übermessen werden sollen (Button inaktiv = "nicht abziehen" = übermessen).
-  //   Damit ergibt der Klick auf "abziehen" bei ausgesparten Löchern keinen Doppel-Abzug,
-  //   und der Klick auf "nicht abziehen" addiert die Lochfläche zur Wand zurück.
+  // Variante B: Schatten + aufgefüllte Eckverbindungen + ALLE bereits-ausgesparten Öffnungen
+  //   (egal ob Button aktiv oder nicht). Der Brutto-Wert ist damit unabhängig von der
+  //   Abzug-Entscheidung — Brutto = Schatten-mit-Löchern-aufgefüllt.
+  //   Der eigentliche Abzug greift dann normal über methodAbzugM2.
   function methodBruttoM2(fIdx, wIdx, w, method) {
     if (method === 'bbox') return w.bboxM2;
     if (method === 'varB') {
       let brutto = calcVarianteB(fIdx, wIdx, w);
-      // Übermessen-Korrektur: bereits ausgesparte Öffnungen die NICHT abgezogen werden sollen,
-      // werden zum Schatten dazugezählt (sie sollen in der Wandfläche enthalten sein).
+      // Bereits-ausgesparte Öffnungen werden immer dem Brutto hinzugerechnet
+      // (sonst hängt der Brutto-Wert vom Abzug-Klick ab — semantisch falsch).
       for (const h of (w.holes || [])) {
-        if (h.alreadyExcludedFromShadow && !isHoleAbzug(fIdx, wIdx, h)) {
+        if (h.alreadyExcludedFromShadow) {
           brutto += h.areaM2;
         }
       }
@@ -2907,17 +2761,17 @@
       const ind = (w.indents || []);
       const filled = ind.filter(i => isIndentFilled(fIdx, wIdx, i));
       const filledM2 = filled.reduce((s, i) => s + i.areaM2, 0);
-      // Aufaddierte übermessene Öffnungen
-      let overflowM2 = 0, overflowCnt = 0;
+      // Bereits-ausgesparte Öffnungen: werden immer zum Brutto addiert (unabhängig vom Abzug-Klick)
+      let excludedM2 = 0, excludedCnt = 0;
       for (const h of (w.holes || [])) {
-        if (h.alreadyExcludedFromShadow && !isHoleAbzug(fIdx, wIdx, h)) {
-          overflowM2 += h.areaM2;
-          overflowCnt++;
+        if (h.alreadyExcludedFromShadow) {
+          excludedM2 += h.areaM2;
+          excludedCnt++;
         }
       }
       let s = `${fmtM2(w.shadowM2)} m² Schatten + ${fmtM2(filledM2)} m² Eckverb. (${filled.length}/${ind.length} aufgefüllt)`;
-      if (overflowCnt > 0) {
-        s += ` + ${fmtM2(overflowM2)} m² übermessene Öffnung${overflowCnt > 1 ? 'en' : ''} (${overflowCnt})`;
+      if (excludedCnt > 0) {
+        s += ` + ${fmtM2(excludedM2)} m² ausgesparte Öffnung${excludedCnt > 1 ? 'en' : ''} (${excludedCnt})`;
       }
       return s;
     }
@@ -3045,72 +2899,25 @@
   }
 
   // Wand-Card im Multiwand-Container (mit eigenem Header und collapsible)
-  function renderWallCard(fIdx, wIdx, w, hdr, isInsideMulti) {
-    const wr = w.range || {};
-    const wallName = wr.name || `Wand ${wIdx+1}`;
-    const wallMeta = [
-      wr.elb ? wr.elb : null,
-      wr.znr && wr.znr !== wr.eln ? `ZNR: ${wr.znr}` : null,
-      wr.xMin !== undefined ? `x: ${fmtMm(wr.xMin)}–${fmtMm(wr.xMax)} mm` : null,
-    ].filter(Boolean).join(' · ');
-
-    if (w.error) {
-      return `
-        <div class="wall-card has-errors" data-fidx="${fIdx}" data-widx="${wIdx}">
-          <div class="wall-card-header" data-wall-toggle="${fIdx}-${wIdx}">
-            <div>
-              <h4>${wallName}</h4>
-              <div class="meta error">FEHLER: ${w.error}</div>
-            </div>
-            <span class="toggle"></span>
-          </div>
-        </div>
-      `;
-    }
-
-    const cardCls = 'wall-card' + warningSeverityClass(w);
-    return `
-      <div class="${cardCls}" data-fidx="${fIdx}" data-widx="${wIdx}">
-        <div class="wall-card-header" data-wall-toggle="${fIdx}-${wIdx}">
-          <div>
-            <h4>${wallName}</h4>
-            <div class="meta">${wallMeta}</div>
-          </div>
-          <span class="toggle"></span>
-        </div>
-        <div class="wall-card-body">
-          ${renderWallContent(fIdx, wIdx, w, hdr)}
-        </div>
-      </div>
-    `;
-  }
-
   // Inhalt einer Wand-Analyse: Tabs mit Übersicht / Öffnungen / etc.
-  // Wird sowohl bei Einzelwand (direkt in file-card) als auch in Multiwand (in wall-card) verwendet.
   function renderWallContent(fIdx, wIdx, w, hdr) {
     const tabPrefix = `f${fIdx}w${wIdx}`;
 
-    // Berechnungen
-    let totalAbzugM2 = 0, countFenster = 0, countTuer = 0, countKlein = 0, countAbzug = 0;
+    // Zähle Öffnungen nach Kategorie für Tab-Beschriftungen
+    let countFenster = 0, countTuer = 0, countKlein = 0, countAbzug = 0;
     (w.holes || []).forEach(h => {
       if (h.category === 'fenster') countFenster++;
       else if (h.category === 'tuer') countTuer++;
       else countKlein++;
-      if (isHoleAbzug(fIdx, wIdx, h)) {
-        totalAbzugM2 += h.areaM2;
-        countAbzug++;
-      }
+      if (isHoleAbzug(fIdx, wIdx, h)) countAbzug++;
     });
-    const m_bbox = w.bboxM2;
-    const m_shadow = w.shadowM2;
-    const m_varB = calcVarianteB(fIdx, wIdx, w);
-    const net_bbox = m_bbox - totalAbzugM2;
-    const net_shadow = m_shadow - totalAbzugM2;
-    const net_varB = m_varB - totalAbzugM2;
-
     const indentCount = (w.indents || []).length;
     const indentFilledCount = (w.indents || []).filter(i => isIndentFilled(fIdx, wIdx, i)).length;
     const indentFilledM2 = (w.indents || []).reduce((s, i) => s + (isIndentFilled(fIdx, wIdx, i) ? i.areaM2 : 0), 0);
+
+    // Visualisierung einmal rendern, an zwei Stellen einsetzen (einmal als Tab-Content für
+    // Schmal-Modus, einmal in der rechten Spalte für Split-Pane-Modus — CSS regelt Sichtbarkeit)
+    const vizHtml = renderVisualization(fIdx, wIdx, w, hdr);
 
     // Warnungen rendern
     const warnings = w.warnings || [];
@@ -3222,7 +3029,7 @@
           </div>
 
           <div class="tab-content" id="visual-${tabPrefix}">
-            ${renderVisualization(fIdx, wIdx, w, hdr)}
+            ${vizHtml}
           </div>
         </div>
 
@@ -3230,7 +3037,7 @@
 
         <div class="wall-pane wall-pane-right">
           <div class="viz-pane-inner">
-            ${renderVisualization(fIdx, wIdx, w, hdr)}
+            ${vizHtml}
           </div>
         </div>
       </div>
@@ -3335,24 +3142,6 @@
       </tr>`;
     });
     h += '</tbody></table>';
-    return h;
-  }
-
-  function renderParserStatus(parsed) {
-    let h = '<table class="holes"><tbody>';
-    h += `<tr><td>Geparste Zeilen</td><td>${parsed.stats.parsedLines}</td></tr>`;
-    h += `<tr><td>TXT-Kommentare</td><td>${parsed.stats.txtLines}</td></tr>`;
-    h += `<tr><td>Bauteile (Holz)</td><td>${parsed.beams.length}</td></tr>`;
-    h += `<tr><td>Plattenlagen</td><td>${parsed.plates.length}</td></tr>`;
-    Object.keys(parsed.header).forEach(k => {
-      const v = parsed.header[k];
-      const vs = (typeof v === 'object') ? JSON.stringify(v) : String(v);
-      h += `<tr><td>${k}</td><td>${vs.substring(0, 100)}</td></tr>`;
-    });
-    h += '</tbody></table>';
-    if (parsed.warnings && parsed.warnings.length > 0) {
-      h += '<div class="warning" style="margin-top:10px; font-family: var(--font-mono); font-size:11px;">Warnungen: ' + parsed.warnings.join(', ') + '</div>';
-    }
     return h;
   }
 
@@ -4019,7 +3808,9 @@
     state.settings.rasterMm = parseFloat(document.getElementById('rasterMm').value) || 2;
     state.settings.thresholdFenster = parseFloat(document.getElementById('thresholdFenster').value) || 0.25;
     state.settings.thresholdAbzug = parseFloat(document.getElementById('thresholdAbzug').value) || 2.5;
-    state.abzugOverrides = {};
+    // Overrides werden NICHT zurückgesetzt — der User hat sie explizit gesetzt.
+    // Veraltete Overrides für Löcher die durch geänderte Erkennungs-Schwellen wegfallen
+    // werden in isHoleAbzug() ohnehin ignoriert (matched per .idx).
     setTimeout(() => {
       for (const file of state.files) {
         try {
@@ -4176,10 +3967,11 @@
 
   function exportCSV() {
     const fmt = v => (typeof v === 'number') ? v.toFixed(3).replace('.', ',') : (v == null ? '' : v);
+    const stripExt = name => (name || '').replace(/\.wup$/i, '');
     const method = state.displayMethod || 'varB';
     const meta = METHOD_META[method];
     const rows = [
-      ['Bauvorhaben', 'ZNR', 'ELN', 'Datei',
+      ['Bauvorhaben', 'ZNR', 'ELN', 'Wand-Name', 'Datei',
        `${meta.letter}: Brutto [m²]`,
        `${meta.letter}: Abzug [m²]`,
        `${meta.letter}: Netto [m²]`]
@@ -4187,8 +3979,9 @@
     let tBrutto = 0, tAbzug = 0;
     state.files.forEach((file, fIdx) => {
       const a = file.analysis;
+      const wandName = stripExt(file.name);
       if (a.error) {
-        rows.push(['', '', '', file.name, 'FEHLER: ' + a.error, '', '']);
+        rows.push(['', '', '', wandName, file.name, 'FEHLER: ' + a.error, '', '']);
         return;
       }
       const txt = file.parsed.txt || {};
@@ -4197,7 +3990,7 @@
       walls.forEach((w, wIdx) => {
         if (isWallDeleted(fIdx, wIdx)) return;
         if (w.error) {
-          rows.push([bauvorhaben, '', (w.range && w.range.name) || `Wand ${wIdx+1}`, file.name, 'FEHLER: ' + w.error, '', '']);
+          rows.push([bauvorhaben, '', (w.range && w.range.name) || `Wand ${wIdx+1}`, wandName, file.name, 'FEHLER: ' + w.error, '', '']);
           return;
         }
         const brutto = methodBruttoM2(fIdx, wIdx, w, method);
@@ -4207,13 +4000,13 @@
         const znr = (w.range && w.range.znr) || file.parsed.header.ZNR || '';
         tBrutto += brutto; tAbzug += abzug;
         rows.push([
-          bauvorhaben, znr, eln, file.name,
+          bauvorhaben, znr, eln, wandName, file.name,
           fmt(brutto), fmt(abzug), fmt(netto),
         ]);
       });
     });
     rows.push([]);
-    rows.push(['SUMME', '', '', '',
+    rows.push(['SUMME', '', '', '', '',
       fmt(tBrutto), fmt(tAbzug), fmt(tBrutto - tAbzug)]);
 
     const csv = rows.map(r => r.map(c => {
